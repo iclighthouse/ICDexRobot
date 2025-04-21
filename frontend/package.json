@@ -1,0 +1,130 @@
+{
+  "name": "Robot",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "serve": "vue-cli-service serve",
+    "build": "vue-cli-service build",
+    "lint": "vue-cli-service lint",
+    "electron:build": "vue-cli-service electron:build",
+    "electron:serve": "vue-cli-service electron:serve",
+    "postinstall": "electron-builder install-app-deps",
+    "postuninstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "ant-design-vue": "^1.7.8",
+    "axios": "^1.6.2",
+    "bignumber.js": "^9.0.1",
+    "core-js": "^3.6.5",
+    "crypto-js": "^4.2.0",
+    "css-minimizer-webpack-plugin": "^3.4.1",
+    "key-encoder": "^2.1.0-beta.0",
+    "lodash.debounce": "^4.0.8",
+    "node-inspect-extracted": "^1.0.8",
+    "node-polyfill-webpack-plugin": "^2.0.1",
+    "sjcl": "^1.0.8",
+    "terser-webpack-plugin": "^5.3.9",
+    "uuid": "^11.1.0",
+    "vue": "^2.6.11",
+    "vue-class-component": "^7.2.3",
+    "vue-clipboard2": "^0.3.3",
+    "vue-property-decorator": "^9.1.2",
+    "vue-router": "^3.0.7",
+    "vuex": "^3.6.2",
+    "vuex-class": "^0.3.2",
+    "web3": "^4.2.2"
+  },
+  "devDependencies": {
+    "@dfinity/agent": "^1.0.1",
+    "@dfinity/auth-client": "^1.0.1",
+    "@dfinity/candid": "^1.0.1",
+    "@dfinity/identity": "^1.0.1",
+    "@dfinity/identity-secp256k1": "^1.0.1",
+    "@dfinity/principal": "^1.0.1",
+    "@dfinity/rosetta-client": "^0.6.0",
+    "@noble/hashes": "^1.3.1",
+    "@types/crc": "^3.4.0",
+    "@types/electron-devtools-installer": "^2.2.0",
+    "@types/node": "^16.11.0",
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^4.18.0",
+    "@typescript-eslint/parser": "^4.18.0",
+    "@vue/cli-plugin-babel": "^5.0.8",
+    "@vue/cli-plugin-eslint": "^5.0.8",
+    "@vue/cli-plugin-typescript": "^5.0.8",
+    "@vue/cli-service": "^5.0.8",
+    "@vue/eslint-config-prettier": "^6.0.0",
+    "@vue/eslint-config-typescript": "^7.0.0",
+    "crc": "^3.8.0",
+    "electron": "^13.0.0",
+    "electron-devtools-installer": "^3.1.0",
+    "eslint": "^7.5.0",
+    "eslint-plugin-prettier": "^3.3.1",
+    "eslint-plugin-vue": "^7.5.0",
+    "ethers": "^5.4.7",
+    "patch-package": "^8.0.0",
+    "postinstall-postinstall": "^2.1.0",
+    "prettier": "^2.2.1",
+    "sass": "^1.80.6",
+    "sass-loader": "^16.0.3",
+    "sass-resources-loader": "^2.2.5",
+    "style-resources-loader": "^1.4.1",
+    "ts-loader": "^9.5.2",
+    "typescript": "^4.9.5",
+    "vue-cli-plugin-electron-builder": "^3.0.0-alpha.0",
+    "vue-template-compiler": "^2.6.11"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "extends": [
+      "plugin:vue/essential",
+      "eslint:recommended",
+      "@vue/typescript/recommended",
+      "@vue/prettier",
+      "@vue/prettier/@typescript-eslint"
+    ],
+    "parserOptions": {
+      "ecmaVersion": 2020
+    },
+    "rules": {
+      "@typescript-eslint/no-var-requires": 0,
+      "@typescript-eslint/no-explicit-any": [
+        "off"
+      ],
+      "@typescript-eslint/ban-ts-comment": "off",
+      "@typescript-eslint/ban-types": [
+        "error",
+        {
+          "extendDefaults": true,
+          "types": {
+            "{}": false
+          }
+        }
+      ],
+      "no-empty": [
+        "error",
+        {
+          "allowEmptyCatch": true
+        }
+      ],
+      "no-debugger": "off"
+    }
+  },
+  "browserslist": {
+    "production": [
+      "last 2 chrome version",
+      "last 2 firefox version",
+      "last 2 safari version",
+      "last 2 edge version"
+    ],
+    "development": [
+      "last 2 chrome version",
+      "last 2 firefox version",
+      "last 2 safari version",
+      "last 2 edge version"
+    ]
+  }
+}

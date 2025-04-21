@@ -1,0 +1,218 @@
+/* http://meyerweb.com/eric/tools/css/reset/ */
+/* v1.0 | 20080212 */
+
+html,
+body,
+div,
+span,
+applet,
+object,
+iframe,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+blockquote,
+pre,
+a,
+abbr,
+acronym,
+address,
+big,
+cite,
+code,
+del,
+dfn,
+em,
+font,
+img,
+ins,
+kbd,
+q,
+s,
+samp,
+small,
+strike,
+strong,
+sub,
+sup,
+tt,
+var,
+b,
+u,
+i,
+center,
+dl,
+dt,
+dd,
+ol,
+ul,
+li,
+fieldset,
+form,
+label,
+legend,
+table,
+caption,
+tbody,
+tfoot,
+thead,
+tr,
+th,
+td {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  font-size: 100%;
+  vertical-align: baseline;
+  background: transparent;
+}
+
+::-webkit-scrollbar {
+  height: 4px;
+  width: 4px;
+}
+::-webkit-scrollbar-thumb {
+  -webkit-box-shadow: none;
+  background: #d7d7d7;
+  border-radius: 19px;
+}
+::-webkit-scrollbar-track {
+  -webkit-box-shadow: none;
+  background: transparent;
+  border-radius: 19px;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  background: #171b1f;
+  color: #333;
+  line-height: 1;
+  font-weight: 400;
+  font-family: 'PingFang SC', 'STHeitiSc-Light', 'Helvetica-Light', Arial,
+    sans-serif;
+}
+ol,
+ul {
+  list-style: none;
+}
+blockquote,
+q {
+  quotes: none;
+}
+blockquote:before,
+blockquote:after,
+q:before,
+q:after {
+  content: '';
+  content: none;
+}
+
+/* remember to define focus styles! */
+:focus {
+  outline: 0;
+}
+
+/* remember to highlight inserts somehow! */
+ins {
+  text-decoration: none;
+}
+del {
+  text-decoration: line-through;
+}
+
+/* tables still need 'cellspacing="0"' in the markup */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+*,
+*:before,
+*:after {
+  box-sizing: border-box;
+}
+
+a,
+a:focus,
+a:hover {
+  color: inherit;
+  outline: none;
+  text-decoration: none;
+}
+
+body {
+  font-size: 14px;
+  -webkit-text-size-adjust: none;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+img {
+  vertical-align: bottom;
+}
+button {
+  margin: 0;
+  outline: none;
+  cursor: pointer;
+}
+textarea {
+  resize: none;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  padding: 8px 15px;
+  box-sizing: border-box;
+  line-height: 1.2;
+}
+
+.icon,
+.iconfont {
+  font-family: 'iconfont' !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-stroke-width: 1px;
+  -moz-osx-font-smoothing: grayscale;
+}
+textarea::-webkit-input-placeholder,
+input::-webkit-input-placeholder {
+  vertical-align: middle;
+  line-height: normal !important;
+  font-size: 12px !important;
+  color: #8c90a1 !important;
+}
+textarea::-moz-placeholder,
+input:-moz-placeholder {
+  /* Mozilla Firefox 4 to 18 */
+  vertical-align: middle;
+  margin-bottom: -2px;
+  line-height: normal !important;
+  font-size: 12px !important;
+  color: #8c90a1 !important;
+}
+textarea::-moz-placeholder,
+input::-moz-placeholder {
+  /* Mozilla Firefox 19+ */
+  vertical-align: middle;
+  margin-bottom: -2px;
+  line-height: normal !important;
+  font-size: 12px !important;
+  color: #8c90a1 !important;
+}
+textarea::-ms-input-placeholder,
+input:-ms-input-placeholder {
+  /* Internet Explorer 10-11 */
+  vertical-align: middle;
+  margin-bottom: -2px;
+  line-height: normal !important;
+  font-size: 12px !important;
+  color: #8c90a1 !important;
+}
+i {
+  font-style: normal;
+}

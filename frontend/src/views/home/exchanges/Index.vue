@@ -204,6 +204,7 @@ export default class extends Vue {
   private async getExchanges(): Promise<void> {
     try {
       const res = await this.$axios.get('/getExchanges');
+      console.log(res);
       if (res && res.status === 200) {
         this.exchanges = res.data;
         this.initExchangesTable();

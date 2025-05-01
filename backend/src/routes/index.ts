@@ -24,7 +24,6 @@ import {
   addExchangeAccount,
   addStrategy,
   deleteStrategyStatus,
-  getAccount,
   getAccounts,
   getExchangeAccounts,
   getExchanges,
@@ -51,6 +50,21 @@ import {
 import { cancelAll, runStrategy } from '../trade';
 
 const router = Router();
+
+const basicAuth = require('basic-auth');
+// const jwt = require('jsonwebtoken');
+// const SECRET_KEY = 'test';
+const auth = function (req: any, res: any, next: any) {
+  const user = basicAuth(req);
+  console.log(user);
+  if (!user || user.name !== 'admin' || user.pass !== '123456') {
+    res.set('WWW-Authenticate', 'Basic realm="Secure Area"');
+    return res.status(401).send('Authentication required.');
+  }
+  next();
+};
+router.use(auth);
+
 let rateLimit = 0;
 const clients = new Map();
 const clientsTrade = new Map();

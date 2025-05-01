@@ -70,7 +70,7 @@ app.on('ready', async () => {
 app.on(
   'certificate-error',
   (event, webContents, url, error, certificate, callback) => {
-    if (url.startsWith('https://localhost:26535')) {
+    if (url.startsWith('http://localhost:26535')) {
       event.preventDefault();
       callback(true);
     } else {

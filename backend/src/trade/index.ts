@@ -87,6 +87,7 @@ import {
   getBinanceFilter,
   getBinanceToken0BuyMarket,
   getBinanceToken0SellMarket,
+  getBinanceToken1,
   getBinanceToken1AndToken0,
   getBinanceToken1AndToken0ByOrderAmount,
   onBinanceBuy,
@@ -109,6 +110,7 @@ export const runStrategy = async (
 ): Promise<string> => {
   const strategy = await getStrategy(strategyId);
   if (strategy) {
+    console.log(!init, strategy.status);
     if (init && strategy.status === StrategyStatus.Running) {
       return 'Strategy is running';
     }
@@ -165,13 +167,14 @@ export const runStrategy = async (
         interval = Number(config.interval) * 1000 * 60;
       } else {
         // 3S
-        interval = Number(config.interval) * 1000 * 3;
+        interval = Number(config.interval) * 1000;
       }
       const range = interval * 0.1;
       const min = interval - range;
       const max = interval + range;
       const intervalTime = Math.floor(Math.random() * (max - min + 1)) + min;
       intervalId[strategy.id] = setTimeout(() => {
+        console.log('intervalId');
         runStrategy(strategy.id, false);
       }, intervalTime);
     }
@@ -1019,6 +1022,7 @@ export const cancelPending = async (
   mainAccount: Identity | BinanceConfig
 ): Promise<void> => {
   if (intervalId[strategyId]) {
+    console.log(intervalId[strategyId]);
     delete intervalId[strategyId];
     clearTimeout(intervalId[strategyId]);
   }
@@ -1888,7 +1892,7 @@ export const pendingOrderBuyICDex = async (
         token0Decimals,
         token1Decimals,
         identity,
-        buyRes.token0Buy,
+        new BigNumber(buyRes.priceBuy).times(buyRes.token0Buy).toString(10),
         ICDexBalance,
         'LMT'
       );
@@ -2260,6 +2264,7 @@ export const getBuyPrice = async (
     } else {
       unit = 0;
     }
+
     const minSellToken1 = new BigNumber(config.token1Amount)
       .times(new BigNumber(1).plus(minimumProfit))
       .div(new BigNumber(1).minus(binanceTradeFee))

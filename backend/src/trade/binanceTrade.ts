@@ -212,13 +212,11 @@ export const getBinanceToken0SellMarket = async (
   if (depth) {
     const depth = res as Depth;
     if (invert === 1) {
-      token0Sell = getBinanceMktToken0(
+      token0Sell = getBinanceMktToken1Buy(
         depth,
         token1Amount,
         binanceTradeFee,
-        filter,
-        filter1,
-        depthQuote
+        filter
       );
     } else {
       token0Sell = getBinanceMktToken0Sell(

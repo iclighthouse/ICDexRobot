@@ -3399,6 +3399,42 @@ export default class extends Mixins(ICDexOrderMixin) {
     }
   }
   private async confirmMaker(): Promise<void> {
+    if (this.invert && this.exchange[this.secondExchangeId] === 'Binance') {
+      const binanceInfo = this.secondPairInfo as BinanceSymbol;
+      let flag = true;
+      if (binanceInfo) {
+        let symbolMinNotional = '0';
+        const avgPrice = await this.getAvgPrice(binanceInfo.symbol);
+        if (avgPrice) {
+          binanceInfo.filters.forEach((filter) => {
+            if (flag) {
+              if (filter.filterType === 'NOTIONAL') {
+                symbolMinNotional = filter.minNotional;
+                if (symbolMinNotional) {
+                  const minToken0 = new BigNumber(symbolMinNotional)
+                    .div(avgPrice.price)
+                    .times(2)
+                    .toString(10);
+                  if (
+                    new BigNumber(this.configFormMaker.token1Amount).lt(
+                      minToken0
+                    )
+                  ) {
+                    this.$message.error(
+                      `Min amount is ${minToken0} ${this.configToken1}`
+                    );
+                    flag = false;
+                  }
+                }
+              }
+            }
+          });
+        }
+      }
+      if (!flag) {
+        return;
+      }
+    }
     if (this.type === 'Add') {
       this.addStrategy(JSON.stringify(this.configFormMaker));
     } else {
@@ -3446,18 +3482,20 @@ export default class extends Mixins(ICDexOrderMixin) {
             if (flag) {
               if (filter.filterType === 'NOTIONAL') {
                 symbolMinNotional = filter.minNotional;
-              }
-              if (symbolMinNotional) {
-                const minToken0 = new BigNumber(symbolMinNotional)
-                  .div(avgPrice.price)
-                  .times(2)
-                  .toString(10);
-                if (new BigNumber(this.configForm.orderAmount).lt(minToken0)) {
-                  this.$message.error(
-                    `Min amount is ${minToken0} ${this.timerToken0}`
-                  );
-                  this.spinningConfig = false;
-                  flag = false;
+                if (symbolMinNotional) {
+                  const minToken0 = new BigNumber(symbolMinNotional)
+                    .div(avgPrice.price)
+                    .times(2)
+                    .toString(10);
+                  if (
+                    new BigNumber(this.configForm.orderAmount).lt(minToken0)
+                  ) {
+                    this.$message.error(
+                      `Min amount is ${minToken0} ${this.timerToken0}`
+                    );
+                    this.spinningConfig = false;
+                    flag = false;
+                  }
                 }
               }
             }
@@ -3645,7 +3683,14 @@ export default class extends Mixins(ICDexOrderMixin) {
     if (this.eventSourceError) {
       this.eventSourceError.close();
     }
-    this.eventSourceError = new EventSource(`https://localhost:26535/events`);
+    const username = 'admin';
+    const password = '123456';
+    const token = btoa(`${username}:${password}`);
+    this.eventSourceError = new EventSource(`http://localhost:26535/events`, {
+      headers: {
+        Authorization: `Basic ${token}`
+      }
+    } as EventSourceInit);
     console.log(this.eventSourceError);
     this.eventSourceError.onmessage = (event) => {
       console.log(event);
@@ -3663,8 +3708,16 @@ export default class extends Mixins(ICDexOrderMixin) {
     if (this.eventSourceTrade) {
       this.eventSourceTrade.close();
     }
+    const username = 'admin';
+    const password = '123456';
+    const token = btoa(`${username}:${password}`);
     this.eventSourceTrade = new EventSource(
-      `https://localhost:26535/events?type=Trade`
+      `http://localhost:26535/events?type=Trade`,
+      {
+        headers: {
+          Authorization: `Basic ${token}`
+        }
+      } as EventSourceInit
     );
     console.log(this.eventSourceTrade);
     this.eventSourceTrade.onmessage = (event) => {
@@ -3729,6 +3782,7 @@ export default class extends Mixins(ICDexOrderMixin) {
     this.type = 'Update';
     this.updateIndex = index;
     this.currentRobot = item;
+    this.invert = item.invert;
     this.selectedType.id = item.typeId;
     this.mainExchangeId = item.mainExchangeId;
     // todo
@@ -4796,6 +4850,7 @@ export default class extends Mixins(ICDexOrderMixin) {
       minimumProfit: '',
       minimumPriceFluctuation: ''
     };
+    this.invert = 0;
   }
   private async getAvgPrice(symbol: string): Promise<AvgPrice> {
     try {

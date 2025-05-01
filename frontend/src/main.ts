@@ -10,9 +10,9 @@ import copyAccount from '@/components/common/copyAccount/Index.vue';
 import VueClipboard from 'vue-clipboard2';
 import * as directives from '@/directives';
 import * as filters from '@/filters';
-import axios from 'axios';
-axios.defaults.baseURL = 'https://localhost:26535';
-Vue.prototype.$axios = axios;
+import http from '@/http/Index';
+
+Vue.prototype.$axios = http;
 // Register global filter functions
 Object.keys(filters).forEach((key) => {
   Vue.filter(key, filters[key]);

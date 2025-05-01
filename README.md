@@ -1,4 +1,4 @@
-一、 Running the Backend
+一、Running the Backend
 
 1. cd robot/backend
 

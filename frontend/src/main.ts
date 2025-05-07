@@ -11,7 +11,6 @@ import VueClipboard from 'vue-clipboard2';
 import * as directives from '@/directives';
 import * as filters from '@/filters';
 import http from '@/http/Index';
-
 Vue.prototype.$axios = http;
 // Register global filter functions
 Object.keys(filters).forEach((key) => {

@@ -31,7 +31,10 @@ import {
   getRobotType,
   getStrategies,
   getStrategy,
+  getUser,
+  insertUser,
   queryOrders,
+  updateLoginTime,
   updateStrategyConfig,
   updateStrategyStatus
 } from '../db';
@@ -45,21 +48,51 @@ import {
   Strategies,
   Strategy,
   StrategyParams,
-  StrategyStatus
+  StrategyStatus,
+  User
 } from '../model';
 import { cancelAll, runStrategy } from '../trade';
+import { NextFunction } from 'express-serve-static-core';
+import bcrypt from 'bcrypt';
 
 const router = Router();
 
 const basicAuth = require('basic-auth');
-// const jwt = require('jsonwebtoken');
-// const SECRET_KEY = 'test';
-const auth = function (req: any, res: any, next: any) {
+
+export const auth = async (req: Request, res: Response, next: NextFunction) => {
+  if (req.originalUrl && req.originalUrl === '/getUser') {
+    next();
+    return;
+  }
   const user = basicAuth(req);
-  console.log(user);
-  if (!user || user.name !== 'admin' || user.pass !== '123456') {
-    res.set('WWW-Authenticate', 'Basic realm="Secure Area"');
-    return res.status(401).send('Authentication required.');
+  let verify = true;
+  const userLocal = await getUser();
+  if (userLocal && user && user.pass) {
+    verify = user.pass === userLocal.password;
+    if (!verify) {
+      verify = await bcrypt.compareSync(user.pass, userLocal.password);
+    }
+  }
+  if (!userLocal) {
+    if (user && user.name && user.pass) {
+      await insertUser(user.name, user.pass);
+    } else {
+      res.set('WWW-Authenticate', 'Basic realm="Secure Area"');
+      return res.status(401).send('Access denied: Invalid credentials.');
+    }
+  } else {
+    if (
+      user &&
+      user.name &&
+      user.pass &&
+      user.name === userLocal.userName &&
+      verify
+    ) {
+      //
+    } else {
+      res.set('WWW-Authenticate', 'Basic realm="Secure Area"');
+      return res.status(401).send('Access denied: Invalid credentials.');
+    }
   }
   next();
 };
@@ -546,6 +579,14 @@ router.get(
     }
   }
 );
+router.get('/getUser', async (req: Request, res: Response<User | null>) => {
+  const response = await getUser();
+  if (response) {
+    res.status(200).json(response);
+  } else {
+    res.status(400).json(response);
+  }
+});
 router.get('/events', (req: Request<{}, {}, {}, { type?: string }>, res) => {
   const { type } = req.query;
   res.setHeader('Content-Type', 'text/event-stream');

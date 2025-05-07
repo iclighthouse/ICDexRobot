@@ -472,3 +472,12 @@ export interface PairPrice {
   latestPrice: string;
   lastPrice: string;
 }
+export interface User {
+  id: number;
+  userName: string;
+  password: string;
+  salt: string;
+  saltRounds: number;
+  updateTime: number;
+  lastLoginTime: number;
+}

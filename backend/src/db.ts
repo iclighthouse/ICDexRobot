@@ -29,13 +29,15 @@ import {
   Strategies,
   Strategy,
   StrategyParams,
-  StrategyStatus
+  StrategyStatus,
+  User
 } from './model';
 import { ExchangeOrderId } from './trade/model';
 import { ICDexService } from './ic/ICDex/ICDexService';
 import { hexToBytes, toHexString } from './ic/converter';
 import { TradingOrder, TxnRecord } from './ic/ICDex/ICDex.idl';
 import { cancelPending, getAccountValue } from './trade';
+import bcrypt from 'bcrypt';
 // const execDir = path.dirname(process.execPath);
 const dbPath = path.resolve('../database.db');
 const openConnections = new Set<Database>();
@@ -233,6 +235,16 @@ export const initDb = async (): Promise<void> => {
         updateTime INTEGER NOT NULL
       )`);
     await withRetry(() => balanceChanges.run());
+    const user = db.prepare(`CREATE TABLE IF NOT EXISTS user (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userName TEXT NOT NULL,
+        password TEXT NOT NULL,
+        salt TEXT NOT NULL,
+        saltRounds INTEGER NOT NULL,
+        updateTime INTEGER NOT NULL,
+        lastLoginTime INTEGER NOT NULL
+      )`);
+    await withRetry(() => user.run());
     await closeConnection(db);
   } catch (err) {
     console.error('Error initializing database:', err);
@@ -1596,6 +1608,59 @@ export const archiveOrder = async (orderId: number): Promise<void> => {
 //     }
 //   );
 // };
+export const insertUser = async (
+  userName: string,
+  password: string
+): Promise<void> => {
+  const db = await createConnection();
+  try {
+    const time = new Date().getTime();
+    const saltRounds = 10;
+    const salt = await bcrypt.genSaltSync(saltRounds);
+    const hash = await bcrypt.hashSync(password, salt);
+    const stmt = db.prepare(
+      `INSERT INTO user (userName, password, salt, saltRounds, updateTime, lastLoginTime) VALUES (?, ?, ?, ?, ?, ?)`
+    );
+    await withRetry(() =>
+      stmt.run(userName, hash, salt, saltRounds, time, time)
+    );
+  } catch (err) {
+    if (err) {
+      console.error(err);
+    }
+  } finally {
+    await closeConnection(db);
+  }
+};
+export const updateLoginTime = async (): Promise<number | null> => {
+  const db = await createConnection();
+  try {
+    const time = new Date().getTime();
+    const stmt = db.prepare(`UPDATE user SET lastLoginTime = ?`);
+    return await withRetry<number>(() => stmt.run(time));
+  } catch (err) {
+    if (err) {
+      console.error(err);
+    }
+    return null;
+  } finally {
+    await closeConnection(db);
+  }
+};
+export const getUser = async (): Promise<User | null> => {
+  const db = await createConnection();
+  const stmt = db.prepare('SELECT * FROM user');
+  try {
+    return await withRetry(() => stmt.get());
+  } catch (err) {
+    if (err) {
+      console.error(err);
+    }
+    return null;
+  } finally {
+    await closeConnection(db);
+  }
+};
 export const withRetry = async <T>(
   operation: any,
   maxRetries = 3,

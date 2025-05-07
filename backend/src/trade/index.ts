@@ -110,7 +110,6 @@ export const runStrategy = async (
 ): Promise<string> => {
   const strategy = await getStrategy(strategyId);
   if (strategy) {
-    console.log(!init, strategy.status);
     if (init && strategy.status === StrategyStatus.Running) {
       return 'Strategy is running';
     }
@@ -174,7 +173,6 @@ export const runStrategy = async (
       const max = interval + range;
       const intervalTime = Math.floor(Math.random() * (max - min + 1)) + min;
       intervalId[strategy.id] = setTimeout(() => {
-        console.log('intervalId');
         runStrategy(strategy.id, false);
       }, intervalTime);
     }
@@ -1022,7 +1020,6 @@ export const cancelPending = async (
   mainAccount: Identity | BinanceConfig
 ): Promise<void> => {
   if (intervalId[strategyId]) {
-    console.log(intervalId[strategyId]);
     delete intervalId[strategyId];
     clearTimeout(intervalId[strategyId]);
   }

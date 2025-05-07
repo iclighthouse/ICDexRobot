@@ -2412,7 +2412,8 @@ import {
   StrategyParams,
   SwapTokenInfo,
   TimerConfig,
-  TokenInfo
+  TokenInfo,
+  User
 } from '@/views/home/model';
 import SelectExchange from '@/views/home/components/SelectExchange.vue';
 import {
@@ -2429,7 +2430,6 @@ import {
   toHexString
 } from '@/ic/converter';
 import { ICDexService } from '@/ic/ICDex/ICDexService';
-import axios from 'axios';
 import { identityFromPem } from '@/ic/utils';
 import { Principal } from '@dfinity/principal';
 import { getTokenBalance } from '@/ic/getTokenBalance';
@@ -2438,7 +2438,8 @@ import TransferToken from '@/components/transferToken/Index.vue';
 import { Identity } from '@dfinity/agent';
 import { getFee } from '@/ic/getTokenFee';
 import { ICDexOrderMixin } from '@/mixins';
-
+import { EventSourcePolyfill } from 'event-source-polyfill';
+import axios from 'axios';
 const intervalTime = 5 * 1000;
 let isRunning = false;
 @Component({
@@ -2493,9 +2494,17 @@ let isRunning = false;
         if (exchangeName === ExchangeName.Binance) {
           const val = depth as Depth;
           if (type === 'ask') {
-            return val.asks[0][0];
+            if (val.asks && val.asks[0] && val.asks[0][0]) {
+              return val.asks[0][0];
+            } else {
+              return '';
+            }
           } else if (type === 'bid') {
-            return val.bids[0][0];
+            if (val.bids && val.bids[0] && val.bids[0][0]) {
+              return val.bids[0][0];
+            } else {
+              return '';
+            }
           }
         } else if (exchangeName === ExchangeName.ICDex) {
           const pairInfo = pair as RobotICDexInfo;
@@ -3101,7 +3110,6 @@ export default class extends Mixins(ICDexOrderMixin) {
       if (new BigNumber(token1MinQty).lt(token0MinICDex)) {
         token1MinQty = token0MinICDex;
       }
-      console.log(this.token1MinQty, token1MinQty, token0MinICDex);
       if (
         this.mainPairInfo &&
         this.token1MinQty &&
@@ -3380,7 +3388,6 @@ export default class extends Mixins(ICDexOrderMixin) {
     } else {
       (this.$refs.configFormMaker as Vue & { validate: any }).validate(
         async (valid: any) => {
-          console.log(valid);
           if (valid) {
             const verifyParams = this.verify();
             if (!verifyParams) {
@@ -3391,11 +3398,7 @@ export default class extends Mixins(ICDexOrderMixin) {
         }
       );
       // const verifyParams = this.verify();
-      // console.log(verifyParams)
-      // if (!verifyParams) {
-      //   return;
-      // }
-      // this.confirmMaker();
+      // 
     }
   }
   private async confirmMaker(): Promise<void> {
@@ -3456,7 +3459,6 @@ export default class extends Mixins(ICDexOrderMixin) {
       );
     } else {
       const verifyParams = this.verify();
-      console.log(verifyParams);
       if (!verifyParams) {
         return;
       }
@@ -3679,21 +3681,23 @@ export default class extends Mixins(ICDexOrderMixin) {
     }
     this.spinningExchange = false;
   }
-  private initSSEError(): void {
+  private async initSSEError(): Promise<void> {
     if (this.eventSourceError) {
       this.eventSourceError.close();
     }
-    const username = 'admin';
-    const password = '123456';
+    const user = await this.getUser();
+    const username = user.userName;
+    const password = user.password;
     const token = btoa(`${username}:${password}`);
-    this.eventSourceError = new EventSource(`http://localhost:26535/events`, {
-      headers: {
-        Authorization: `Basic ${token}`
+    this.eventSourceError = new EventSourcePolyfill(
+      `http://localhost:26535/events`,
+      {
+        headers: {
+          Authorization: `Basic ${token}`
+        }
       }
-    } as EventSourceInit);
-    console.log(this.eventSourceError);
+    );
     this.eventSourceError.onmessage = (event) => {
-      console.log(event);
     };
     this.eventSourceError.onopen = () => {
       //
@@ -3704,24 +3708,29 @@ export default class extends Mixins(ICDexOrderMixin) {
       setTimeout(() => this.initSSEError(), 5000);
     };
   }
-  private initSSETrade(): void {
+  private async getUser(): Promise<User | null> {
+    const res = await axios.get('http://localhost:26535/getUser');
+    if (res.status === 200) {
+      return res.data;
+    }
+  }
+  private async initSSETrade(): Promise<void> {
     if (this.eventSourceTrade) {
       this.eventSourceTrade.close();
     }
-    const username = 'admin';
-    const password = '123456';
+    const user = await this.getUser();
+    const username = user.userName;
+    const password = user.password;
     const token = btoa(`${username}:${password}`);
-    this.eventSourceTrade = new EventSource(
+    this.eventSourceTrade = new EventSourcePolyfill(
       `http://localhost:26535/events?type=Trade`,
       {
         headers: {
           Authorization: `Basic ${token}`
         }
-      } as EventSourceInit
+      }
     );
-    console.log(this.eventSourceTrade);
     this.eventSourceTrade.onmessage = (event) => {
-      console.log(event);
       this.getOrders();
     };
     this.eventSourceTrade.onopen = () => {
@@ -4142,7 +4151,6 @@ export default class extends Mixins(ICDexOrderMixin) {
           }
         });
         this.orders = orders;
-        console.log(this.orders);
       }
     } catch (e) {
       //
@@ -4747,11 +4755,13 @@ export default class extends Mixins(ICDexOrderMixin) {
           }
         }
       } else if (exchangeName === ExchangeName.Binance) {
-        const res = await axios.get(`/getDepth?symbol=${pairId}`);
+        const res = await this.$axios.get(`/getDepth?symbol=${pairId}`);
         if (res && res.status === 200) {
           this.$set(this.robotDepth, pairId, res.data);
         }
-        const tickerPrice = await axios.get(`/getTickerPrice?symbol=${pairId}`);
+        const tickerPrice = await this.$axios.get(
+          `/getTickerPrice?symbol=${pairId}`
+        );
         if (tickerPrice && tickerPrice.status === 200) {
           if (this.robotStats[pairId]) {
             const price: PairPrice = {
@@ -4896,7 +4906,6 @@ export default class extends Mixins(ICDexOrderMixin) {
     return '-';
   }
   private changeFilter(): void {
-    console.log(this.filterRobot);
     this.pageOrder = 1;
     this.pageSizeOrder = 10;
     this.totalOrder = 0;

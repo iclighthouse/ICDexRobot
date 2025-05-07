@@ -238,3 +238,12 @@ export interface OrderDB {
   time: number;
   updateTime: number;
 }
+export interface User {
+  id: number;
+  userName: string;
+  password: string;
+  salt: string;
+  saltRounds: number;
+  updateTime: number;
+  lastLoginTime: number;
+}

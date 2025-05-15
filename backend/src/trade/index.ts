@@ -87,7 +87,6 @@ import {
   getBinanceFilter,
   getBinanceToken0BuyMarket,
   getBinanceToken0SellMarket,
-  getBinanceToken1,
   getBinanceToken1AndToken0,
   getBinanceToken1AndToken0ByOrderAmount,
   onBinanceBuy,
@@ -2595,6 +2594,7 @@ export const toRunTimer = async (
                 return res;
               }
             } else if (
+              new BigNumber(ICDexRes.buyToken0NeedToken1).gt(0) &&
               new BigNumber(binanceRes.token1).gt(ICDexRes.buyToken0NeedToken1)
             ) {
               const res = await ICDexBuyThenBinanceTrade(

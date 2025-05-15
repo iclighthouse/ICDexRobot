@@ -65,7 +65,6 @@ export const onBinanceBuy = async (
       'GTC',
       price
     );
-    console.dir(buyValue);
   } else if (type === 'MARKET') {
     const token1Buy = new BigNumber(
       Math.ceil(
@@ -101,7 +100,6 @@ export const onBinanceBuy = async (
       price,
       token1Buy
     );
-    console.dir(buyValue);
   }
   if (buyValue && (buyValue as ErrorData).code) {
     return JSON.stringify({
@@ -164,7 +162,6 @@ export const onBinanceSell = async (
       price
     );
     if (sellValue && (sellValue as ErrorData).code) {
-      console.dir(sellValue);
       return JSON.stringify({
         type: 'BinanceTradeError',
         message: `${pairInfo.symbol}: ${(sellValue as ErrorData).msg}`
@@ -433,14 +430,14 @@ export const getBinanceToken1AndToken0 = async (
     if (!(res as ErrorData).code) {
       const depth = res as Depth;
       if (invert) {
-        token1 = getBinanceMktToken1(
+        token0 = getBinanceMktToken1(
           depth,
           { token0: token.token1, token1: token.token0 },
           binanceTradeFee,
           filter,
           filter1
         );
-        token0 = getBinanceMktToken0(
+        token1 = getBinanceMktToken0(
           depth,
           token.token0,
           binanceTradeFee,
@@ -448,14 +445,14 @@ export const getBinanceToken1AndToken0 = async (
           filter1
         );
       } else {
-        token0 = getBinanceMktToken1(
+        token1 = getBinanceMktToken1(
           depth,
           token,
           binanceTradeFee,
           filter,
           filter1
         );
-        token1 = getBinanceMktToken0(
+        token0 = getBinanceMktToken0(
           depth,
           token.token1,
           binanceTradeFee,

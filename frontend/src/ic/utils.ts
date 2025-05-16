@@ -118,7 +118,6 @@ const identityFromPem = (rawPrivateKey: string): Identity => {
       );
       return identity;
     } catch (e) {
-      console.error(e);
       return null;
     }
   } else {
@@ -131,7 +130,6 @@ const identityFromPem = (rawPrivateKey: string): Identity => {
       const identity = Ed25519KeyIdentity.fromKeyPair(publicKey, privateKey);
       return identity;
     } catch (e) {
-      console.error(e);
       return null;
     }
   }

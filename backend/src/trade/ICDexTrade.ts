@@ -544,6 +544,7 @@ export const getMktToken1Buy = (
         const lastTotal = new BigNumber(buyTotalMKT)
           .minus(quantity)
           .times(price);
+        quantity = buyTotalMKT;
         total = new BigNumber(total)
           .plus(lastTotal.toString(10))
           .decimalPlaces(token1Decimals, 1)
@@ -551,6 +552,9 @@ export const getMktToken1Buy = (
         break;
       }
     }
+  }
+  if (new BigNumber(quantity).lt(buyTotalMKT)) {
+    return '0';
   }
   return total;
 };

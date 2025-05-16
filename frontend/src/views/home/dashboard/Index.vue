@@ -574,28 +574,31 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in orders" :key="item.mainExchangeOrderId">
+          <tr v-for="item in orders" :key="item.id">
             <td>{{ item.id }}</td>
             <td>{{ item.strategyId }}</td>
             <td>
               {{ exchange[item.strategy.mainExchangeId] }}
             </td>
             <td>
-              <a
-                v-if="exchange[item.strategy.mainExchangeId] === 'ICDex'"
-                :href="`https://ic.house/swap/${item.strategy.mainExchangePair}/${item.mainExchangeOrderId}`"
-                rel="nofollow noreferrer noopener"
-                target="_blank"
-              >
-                <copy-account
-                  :account="item.mainExchangeOrderId"
-                  placement="left"
-                  copy-text="txid"
-                ></copy-account>
-              </a>
-              <span v-else>
-                {{ item.mainExchangeOrderId }}
-              </span>
+              <div v-if="item.mainExchangeOrderId">
+                <a
+                  v-if="exchange[item.strategy.mainExchangeId] === 'ICDex'"
+                  :href="`https://ic.house/swap/${item.strategy.mainExchangePair}/${item.mainExchangeOrderId}`"
+                  rel="nofollow noreferrer noopener"
+                  target="_blank"
+                >
+                  <copy-account
+                    :account="item.mainExchangeOrderId"
+                    placement="left"
+                    copy-text="txid"
+                  ></copy-account>
+                </a>
+                <span v-else>
+                  {{ item.mainExchangeOrderId }}
+                </span>
+              </div>
+              <div v-else>-</div>
             </td>
             <td
               :class="{
@@ -603,135 +606,159 @@
                 'base-red': filterOrderStatus(item, exchange) === 'Cancelled'
               }"
             >
-              <div>{{ filterOrderStatus(item, exchange) }}:</div>
-              <div v-if="exchange[item.strategy.mainExchangeId] === 'ICDex'">
-                <div>
-                  <div class="swap-info">
-                    <div v-if="item.mainExchangeOrderInfo" class="flex-center">
+              <div v-if="item.mainExchangeOrderId">
+                <div>{{ filterOrderStatus(item, exchange) }}:</div>
+                <div v-if="exchange[item.strategy.mainExchangeId] === 'ICDex'">
+                  <div>
+                    <div class="swap-info">
                       <div
-                        v-if="
-                          filterSide(item.mainExchangeOrderInfo, 'ICDex') ===
-                          'Sell'
-                        "
+                        v-if="item.mainExchangeOrderInfo"
+                        class="flex-center"
                       >
-                        {{
-                          getSellToken0(
-                            item.mainExchangeOrderInfo,
-                            item.balanceChangesFilled,
-                            robotPairInfo
-                          ) | filterVal
-                        }}
-                        <span class="span-nbsp"></span
-                        >{{
-                          robotPairInfo[item.strategy.mainExchangePair]
-                            | filterSymbol(
-                              exchange[item.strategy.mainExchangeId],
-                              true
-                            )
-                        }}
+                        <div
+                          v-if="
+                            filterSide(item.mainExchangeOrderInfo, 'ICDex') ===
+                            'Sell'
+                          "
+                        >
+                          {{
+                            getSellToken0(
+                              item.mainExchangeOrderInfo,
+                              item.balanceChangesFilled,
+                              robotPairInfo
+                            ) | filterVal
+                          }}
+                          <span class="span-nbsp"></span
+                          >{{
+                            robotPairInfo[item.strategy.mainExchangePair]
+                              | filterSymbol(
+                                exchange[item.strategy.mainExchangeId],
+                                true
+                              )
+                          }}
+                        </div>
+                        <div
+                          v-if="
+                            filterSide(item.mainExchangeOrderInfo, 'ICDex') ===
+                            'Buy'
+                          "
+                        >
+                          {{
+                            getBuyToken1(
+                              item.mainExchangeOrderInfo,
+                              item.balanceChangesFilled,
+                              robotPairInfo
+                            ) | filterVal
+                          }}
+                          <span class="span-nbsp"></span
+                          >{{
+                            robotPairInfo[item.strategy.mainExchangePair]
+                              | filterSymbol(
+                                exchange[item.strategy.mainExchangeId],
+                                false
+                              )
+                          }}
+                        </div>
+                        <span class="span-nbsp"></span>-><span
+                          class="span-nbsp"
+                        ></span>
+                        <div
+                          v-if="
+                            filterSide(item.mainExchangeOrderInfo, 'ICDex') ===
+                            'Sell'
+                          "
+                        >
+                          {{
+                            getSellToken1(
+                              item.mainExchangeOrderInfo,
+                              item.balanceChangesFilled,
+                              robotPairInfo
+                            ) | filterVal
+                          }}
+                          <span class="span-nbsp"></span
+                          >{{
+                            robotPairInfo[item.strategy.mainExchangePair]
+                              | filterSymbol(
+                                exchange[item.strategy.mainExchangeId],
+                                false
+                              )
+                          }}
+                        </div>
+                        <div
+                          v-if="
+                            filterSide(item.mainExchangeOrderInfo, 'ICDex') ===
+                            'Buy'
+                          "
+                        >
+                          {{
+                            getBuyToken0(
+                              item.mainExchangeOrderInfo,
+                              item.balanceChangesFilled,
+                              robotPairInfo
+                            ) | filterVal
+                          }}
+                          <span class="span-nbsp"></span
+                          >{{
+                            robotPairInfo[item.strategy.mainExchangePair]
+                              | filterSymbol(
+                                exchange[item.strategy.mainExchangeId],
+                                true
+                              )
+                          }}
+                        </div>
                       </div>
-                      <div
-                        v-if="
-                          filterSide(item.mainExchangeOrderInfo, 'ICDex') ===
-                          'Buy'
-                        "
-                      >
-                        {{
-                          getBuyToken1(
-                            item.mainExchangeOrderInfo,
-                            item.balanceChangesFilled,
-                            robotPairInfo
-                          ) | filterVal
-                        }}
-                        <span class="span-nbsp"></span
-                        >{{
-                          robotPairInfo[item.strategy.mainExchangePair]
-                            | filterSymbol(
-                              exchange[item.strategy.mainExchangeId],
-                              false
-                            )
-                        }}
-                      </div>
-                      <span class="span-nbsp"></span>-><span
-                        class="span-nbsp"
-                      ></span>
-                      <div
-                        v-if="
-                          filterSide(item.mainExchangeOrderInfo, 'ICDex') ===
-                          'Sell'
-                        "
-                      >
-                        {{
-                          getSellToken1(
-                            item.mainExchangeOrderInfo,
-                            item.balanceChangesFilled,
-                            robotPairInfo
-                          ) | filterVal
-                        }}
-                        <span class="span-nbsp"></span
-                        >{{
-                          robotPairInfo[item.strategy.mainExchangePair]
-                            | filterSymbol(
-                              exchange[item.strategy.mainExchangeId],
-                              false
-                            )
-                        }}
-                      </div>
-                      <div
-                        v-if="
-                          filterSide(item.mainExchangeOrderInfo, 'ICDex') ===
-                          'Buy'
-                        "
-                      >
-                        {{
-                          getBuyToken0(
-                            item.mainExchangeOrderInfo,
-                            item.balanceChangesFilled,
-                            robotPairInfo
-                          ) | filterVal
-                        }}
-                        <span class="span-nbsp"></span
-                        >{{
-                          robotPairInfo[item.strategy.mainExchangePair]
-                            | filterSymbol(
-                              exchange[item.strategy.mainExchangeId],
-                              true
-                            )
-                        }}
-                      </div>
+                      <div v-else>-</div>
                     </div>
-                    <div v-else>-</div>
                   </div>
+                  <span class="line2 fs12" v-if="item.mainExchangeOrderInfo">
+                    (price:
+                    <span>
+                      {{ getICDexPrice(item, robotPairInfo, exchange) }}</span
+                    >)
+                  </span>
                 </div>
-                <span class="line2 fs12" v-if="item.mainExchangeOrderInfo">
-                  (price:
-                  <span>
-                    {{ getICDexPrice(item, robotPairInfo, exchange) }}</span
-                  >)
-                </span>
-              </div>
-              <div v-if="exchange[item.strategy.mainExchangeId] === 'Binance'">
-                <div v-if="item.mainExchangeOrderInfo" class="flex-center">
-                  <div v-if="item.mainExchangeOrderInfo.side === 'SELL'">
-                    <span>
+                <div
+                  v-if="exchange[item.strategy.mainExchangeId] === 'Binance'"
+                >
+                  <div v-if="item.mainExchangeOrderInfo" class="flex-center">
+                    <div v-if="item.mainExchangeOrderInfo.side === 'SELL'">
+                      <span>
+                        {{
+                          getSellToken0Binance(
+                            item.mainExchangeOrderInfo,
+                            item.balanceChangesFilled
+                          ) | filterVal
+                        }}
+                        {{
+                          getBinanceSymbol(
+                            item.mainExchangeOrderInfo.symbol,
+                            robotPairInfo
+                          ).base
+                        }}
+                      </span>
+                    </div>
+                    <div v-if="item.mainExchangeOrderInfo.side === 'BUY'">
+                      <span>
+                        {{
+                          getBuyToken1Binance(
+                            item.mainExchangeOrderInfo,
+                            item.balanceChangesFilled
+                          ) | filterVal
+                        }}
+                        {{
+                          getBinanceSymbol(
+                            item.mainExchangeOrderInfo.symbol,
+                            robotPairInfo
+                          ).quote
+                        }}
+                      </span>
+                    </div>
+                    <span class="span-nbsp"></span>-><span
+                      class="span-nbsp"
+                    ></span>
+                    <div v-if="item.mainExchangeOrderInfo.side === 'SELL'">
                       {{
-                        getSellToken0Binance(
-                          item.mainExchangeOrderInfo,
-                          item.balanceChangesFilled
-                        ) | filterVal
-                      }}
-                      {{
-                        getBinanceSymbol(
-                          item.mainExchangeOrderInfo.symbol,
-                          robotPairInfo
-                        ).base
-                      }}
-                    </span>
-                  </div>
-                  <div v-if="item.mainExchangeOrderInfo.side === 'BUY'">
-                    <span>
-                      {{
-                        getBuyToken1Binance(
+                        getSellToken1Binance(
                           item.mainExchangeOrderInfo,
                           item.balanceChangesFilled
                         ) | filterVal
@@ -742,47 +769,31 @@
                           robotPairInfo
                         ).quote
                       }}
-                    </span>
+                    </div>
+                    <div v-if="item.mainExchangeOrderInfo.side === 'BUY'">
+                      {{
+                        getBuyToken0Binance(
+                          item.mainExchangeOrderInfo,
+                          item.balanceChangesFilled
+                        ) | filterVal
+                      }}
+                      {{
+                        getBinanceSymbol(
+                          item.mainExchangeOrderInfo.symbol,
+                          robotPairInfo
+                        ).base
+                      }}
+                    </div>
                   </div>
-                  <span class="span-nbsp"></span>-><span
-                    class="span-nbsp"
-                  ></span>
-                  <div v-if="item.mainExchangeOrderInfo.side === 'SELL'">
-                    {{
-                      getSellToken1Binance(
-                        item.mainExchangeOrderInfo,
-                        item.balanceChangesFilled
-                      ) | filterVal
-                    }}
-                    {{
-                      getBinanceSymbol(
-                        item.mainExchangeOrderInfo.symbol,
-                        robotPairInfo
-                      ).quote
-                    }}
-                  </div>
-                  <div v-if="item.mainExchangeOrderInfo.side === 'BUY'">
-                    {{
-                      getBuyToken0Binance(
-                        item.mainExchangeOrderInfo,
-                        item.balanceChangesFilled
-                      ) | filterVal
-                    }}
-                    {{
-                      getBinanceSymbol(
-                        item.mainExchangeOrderInfo.symbol,
-                        robotPairInfo
-                      ).base
-                    }}
-                  </div>
+                  <span class="line2 fs12" v-if="item.mainExchangeOrderInfo">
+                    (price:
+                    <span>
+                      {{ getBinancePrice(item, robotPairInfo, exchange) }}</span
+                    >)
+                  </span>
                 </div>
-                <span class="line2 fs12" v-if="item.mainExchangeOrderInfo">
-                  (price:
-                  <span>
-                    {{ getBinancePrice(item, robotPairInfo, exchange) }}</span
-                  >)
-                </span>
               </div>
+              <div v-else>-</div>
             </td>
             <td class="table-line">
               {{ exchange[item.strategy.secondExchangeId] }}
@@ -2149,21 +2160,24 @@
                 {{ exchange[item.strategy.mainExchangeId] }}
               </td>
               <td>
-                <a
-                  v-if="exchange[item.strategy.mainExchangeId] === 'ICDex'"
-                  :href="`https://ic.house/swap/${item.strategy.mainExchangePair}/${item.mainExchangeOrderId}`"
-                  rel="nofollow noreferrer noopener"
-                  target="_blank"
-                >
-                  <copy-account
-                    :account="item.mainExchangeOrderId"
-                    placement="left"
-                    copy-text="txid"
-                  ></copy-account>
-                </a>
-                <span v-else>
-                  {{ item.mainExchangeOrderId }}
-                </span>
+                <div v-if="item.mainExchangeOrderId">
+                  <a
+                    v-if="exchange[item.strategy.mainExchangeId] === 'ICDex'"
+                    :href="`https://ic.house/swap/${item.strategy.mainExchangePair}/${item.mainExchangeOrderId}`"
+                    rel="nofollow noreferrer noopener"
+                    target="_blank"
+                  >
+                    <copy-account
+                      :account="item.mainExchangeOrderId"
+                      placement="left"
+                      copy-text="txid"
+                    ></copy-account>
+                  </a>
+                  <span v-else>
+                    {{ item.mainExchangeOrderId }}
+                  </span>
+                </div>
+                <div v-else>-</div>
               </td>
               <td>
                 <div v-if="exchange[item.strategy.mainExchangeId] === 'ICDex'">
@@ -2397,6 +2411,7 @@ import {
   Exchange,
   ExchangeInfo,
   ExchangeName,
+  FilledBalance,
   MakerConfig,
   OrderRow,
   OrdersTable,
@@ -3064,6 +3079,7 @@ export default class extends Mixins(ICDexOrderMixin) {
   beforeDestroy(): void {
     window.clearTimeout(this.timer);
     this.timer = null;
+    this.closeEvent();
     // window.clearTimeout(this.timerBalance);
     // this.timerBalance = null;
     // window.clearTimeout(this.timerDepth);
@@ -3398,7 +3414,7 @@ export default class extends Mixins(ICDexOrderMixin) {
         }
       );
       // const verifyParams = this.verify();
-      // 
+      //
     }
   }
   private async confirmMaker(): Promise<void> {
@@ -3577,7 +3593,6 @@ export default class extends Mixins(ICDexOrderMixin) {
         this.$message.error('Error');
       }
     } catch (e) {
-      console.error(e);
       this.$message.error('Error');
     }
     await this.getAccounts();
@@ -3596,7 +3611,6 @@ export default class extends Mixins(ICDexOrderMixin) {
         this.$message.success('Update strategy success');
       }
     } catch (e) {
-      console.error(e);
       this.$message.error('Error');
     }
     this.$set(this.robots[this.updateIndex], 'arguments', config);
@@ -3682,8 +3696,11 @@ export default class extends Mixins(ICDexOrderMixin) {
     this.spinningExchange = false;
   }
   private async initSSEError(): Promise<void> {
-    if (this.eventSourceError) {
-      this.eventSourceError.close();
+    if (
+      this.eventSourceError &&
+      this.eventSourceError.readyState === this.eventSourceError.OPEN
+    ) {
+      return;
     }
     const user = await this.getUser();
     const username = user.userName;
@@ -3697,15 +3714,13 @@ export default class extends Mixins(ICDexOrderMixin) {
         }
       }
     );
-    this.eventSourceError.onmessage = (event) => {
-    };
+    this.eventSourceError.onmessage = (event) => {};
     this.eventSourceError.onopen = () => {
       //
     };
     this.eventSourceError.onerror = (error) => {
-      console.error('eventSourceError failed:', error);
       this.eventSourceError.close();
-      setTimeout(() => this.initSSEError(), 5000);
+      setTimeout(() => this.initSSEError(), 1000);
     };
   }
   private async getUser(): Promise<User | null> {
@@ -3715,8 +3730,11 @@ export default class extends Mixins(ICDexOrderMixin) {
     }
   }
   private async initSSETrade(): Promise<void> {
-    if (this.eventSourceTrade) {
-      this.eventSourceTrade.close();
+    if (
+      this.eventSourceTrade &&
+      this.eventSourceTrade.readyState === this.eventSourceTrade.OPEN
+    ) {
+      return;
     }
     const user = await this.getUser();
     const username = user.userName;
@@ -3734,12 +3752,10 @@ export default class extends Mixins(ICDexOrderMixin) {
       this.getOrders();
     };
     this.eventSourceTrade.onopen = () => {
-      //
     };
     this.eventSourceTrade.onerror = (error) => {
-      console.error('eventSourceTrade failed:', error);
       this.eventSourceTrade.close();
-      setTimeout(() => this.initSSETrade(), 5000);
+      setTimeout(() => this.initSSETrade(), 1000);
     };
   }
   private async deleteRobot(item: Robot): Promise<void> {
@@ -4020,8 +4036,13 @@ export default class extends Mixins(ICDexOrderMixin) {
         const orders = response.orders;
         this.totalOrderError = response.total;
         const pairInfo = [];
+        const promiseValue = [];
         orders.forEach((item) => {
-          item.balanceChangesFilled = { token0: 0, token1: 0 };
+          if (item.mainExchangeOrderId) {
+            promiseValue.push(
+              this.getBalanceChangesByMainExchangeOrderId(item)
+            );
+          }
           if (
             !pairInfo.includes(item.strategy.mainExchangePair) &&
             !this.robotPairInfo[item.strategy.mainExchangePair]
@@ -4062,6 +4083,7 @@ export default class extends Mixins(ICDexOrderMixin) {
             );
           }
         });
+        await Promise.all(promiseValue);
         this.ordersError = orders;
       }
     } catch (e) {
@@ -4108,8 +4130,13 @@ export default class extends Mixins(ICDexOrderMixin) {
         const orders = response.orders;
         this.totalOrder = response.total;
         const pairInfo = [];
+        const promiseValue = [];
         orders.forEach((item) => {
-          item.balanceChangesFilled = { token0: 0, token1: 0 };
+          if (item.mainExchangeOrderId) {
+            promiseValue.push(
+              this.getBalanceChangesByMainExchangeOrderId(item)
+            );
+          }
           if (
             !pairInfo.includes(item.strategy.mainExchangePair) &&
             !this.robotPairInfo[item.strategy.mainExchangePair]
@@ -4150,6 +4177,7 @@ export default class extends Mixins(ICDexOrderMixin) {
             );
           }
         });
+        await Promise.all(promiseValue);
         this.orders = orders;
       }
     } catch (e) {
@@ -4157,6 +4185,31 @@ export default class extends Mixins(ICDexOrderMixin) {
     }
     this.spinningOrders = false;
   }
+  private async getBalanceChangesByMainExchangeOrderId(
+    item: OrderRow
+  ): Promise<void> {
+    try {
+      const res = await this.$axios.get(
+        '/getBalanceChangesByMainExchangeOrderId',
+        {
+          params: {
+            strategyId: item.strategyId,
+            mainExchangeOrderId: item.mainExchangeOrderId
+          }
+        }
+      );
+      if (res && res.status === 200) {
+        item.balanceChangesFilled = res.data;
+        // this.$set(item, 'balanceChangesFilled', res.data);
+        // console.log(item.balanceChangesFilled);
+      } else {
+        item.balanceChangesFilled = { token0: 0, token1: 0 };
+      }
+    } catch (e) {
+      item.balanceChangesFilled = { token0: 0, token1: 0 };
+    }
+  }
+
   private async getRobotType(): Promise<void> {
     try {
       const res = await this.$axios.get('/getRobotType');

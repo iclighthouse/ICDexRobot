@@ -577,12 +577,12 @@ export const getBinanceMktToken1Buy = (
     const price = depth.asks[i][0];
     const currentQuantity = depth.asks[i][1];
     const currentTotal = new BigNumber(price).times(currentQuantity);
-    if (new BigNumber(total).plus(currentQuantity).lt(token0)) {
+    if (new BigNumber(quantity).plus(currentQuantity).lt(token0)) {
       total = new BigNumber(total).plus(currentTotal).toString(10);
       quantity = new BigNumber(currentQuantity).plus(quantity).toString(10);
     } else {
       const lastQuantity = new BigNumber(token0)
-        .minus(total)
+        .minus(quantity)
         .decimalPlaces(filter.token0.decimals, 1);
       total = new BigNumber(lastQuantity).times(price).plus(total).toString(10);
       quantity = new BigNumber(quantity)

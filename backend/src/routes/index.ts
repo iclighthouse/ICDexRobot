@@ -1,3 +1,4 @@
+import BigNumber from 'bignumber.js';
 import { Request, Response, Router } from 'express';
 import {
   AccountInfo,
@@ -25,6 +26,7 @@ import {
   addStrategy,
   deleteStrategyStatus,
   getAccounts,
+  getBalanceChangesByMainExchangeOrderId,
   getExchangeAccounts,
   getExchanges,
   getPairInfo,
@@ -34,7 +36,6 @@ import {
   getUser,
   insertUser,
   queryOrders,
-  updateLoginTime,
   updateStrategyConfig,
   updateStrategyStatus
 } from '../db';
@@ -54,6 +55,7 @@ import {
 import { cancelAll, runStrategy } from '../trade';
 import { NextFunction } from 'express-serve-static-core';
 import bcrypt from 'bcrypt';
+import { Balance } from '../trade/model';
 
 const router = Router();
 
@@ -99,7 +101,6 @@ export const auth = async (req: Request, res: Response, next: NextFunction) => {
 router.use(auth);
 
 let rateLimit = 0;
-const clients = new Map();
 const clientsTrade = new Map();
 router.get(
   '/getAccountInfo',
@@ -434,13 +435,14 @@ router.post(
         if (response) {
           res.status(400).json(response);
         } else {
-          updateStrategyStatus(strategyId, StrategyStatus.Running)
-            .then((updateRes) => {
-              res.status(200).json(updateRes);
-            })
-            .catch((e) => {
-              res.status(400).json(e);
-            });
+          res.status(200).json('Success');
+          // updateStrategyStatus(strategyId, StrategyStatus.Running)
+          //   .then((updateRes) => {
+          //     res.status(200).json(updateRes);
+          //   })
+          //   .catch((e) => {
+          //     res.status(400).json(e);
+          //   });
         }
       })
       .catch((response) => {
@@ -587,6 +589,39 @@ router.get('/getUser', async (req: Request, res: Response<User | null>) => {
     res.status(400).json(response);
   }
 });
+router.get(
+  '/getBalanceChangesByMainExchangeOrderId',
+  async (
+    req: Request<
+      {},
+      {},
+      {},
+      { strategyId: number; mainExchangeOrderId: string }
+    >,
+    res: Response<{ token0: number; token1: number } | null>
+  ) => {
+    try {
+      const { strategyId, mainExchangeOrderId } = req.query;
+      const token0 = await getBalanceChangesByMainExchangeOrderId(
+        strategyId,
+        mainExchangeOrderId,
+        true
+      );
+      const token1 = await getBalanceChangesByMainExchangeOrderId(
+        strategyId,
+        mainExchangeOrderId,
+        false
+      );
+      const filled = {
+        token0: Number(token0.subtract),
+        token1: Number(token1.subtract)
+      };
+      res.status(200).json(filled);
+    } catch (e) {
+      res.status(400).json(null);
+    }
+  }
+);
 router.get('/events', (req: Request<{}, {}, {}, { type?: string }>, res) => {
   const { type } = req.query;
   res.setHeader('Content-Type', 'text/event-stream');
@@ -597,14 +632,20 @@ router.get('/events', (req: Request<{}, {}, {}, { type?: string }>, res) => {
     const key = `Trade`;
     clientsTrade.set(key, res);
     req.on('close', () => {
-      clientsTrade.delete(key);
+      const currentRes = clientsTrade.get(key);
+      if (currentRes === res) {
+        clientsTrade.delete(key);
+      }
       res.end();
     });
   } else {
     const key = 'Events';
-    clients.set(key, res);
+    clientsTrade.set(key, res);
     req.on('close', () => {
-      clients.delete(key);
+      const currentRes = clientsTrade.get(key);
+      if (currentRes === res) {
+        clientsTrade.delete(key);
+      }
       res.end();
     });
   }
@@ -615,16 +656,14 @@ export const sendEventToClients = (
   type?: string
 ) => {
   if (type && type === 'Trade') {
-    for (const [key, client] of clientsTrade) {
-      if (key === `Trade`) {
-        client.write(`data: ${message}\n\n`);
-      }
+    const client = clientsTrade.get('Trade');
+    if (client) {
+      client.write(`data: ${message}\n\n`);
     }
   } else {
-    for (const [key, client] of clients) {
-      if (key === 'Events') {
-        client.write(`data: ${message}\n\n`);
-      }
+    const client = clientsTrade.get('Events');
+    if (client) {
+      client.write(`data: ${message}\n\n`);
     }
   }
 };

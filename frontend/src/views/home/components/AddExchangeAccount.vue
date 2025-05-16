@@ -246,7 +246,6 @@ export default class extends Vue {
               }
             }
           } catch (e) {
-            console.error(e);
             this.$message.error('Add error');
           }
           this.spinningAddAccount = false;
@@ -325,7 +324,6 @@ export default class extends Vue {
               this.visible = false;
             }
           } catch (e) {
-            console.error(e);
             this.$message.error('Add error');
           }
           this.spinningAddAccount = false;

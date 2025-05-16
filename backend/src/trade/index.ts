@@ -93,6 +93,7 @@ import {
   onBinanceSell
 } from './binanceTrade';
 import { OrderPrice } from '../ic/ICDex/ICDex.idl';
+
 const interval = 5 * 1000;
 const binanceAccountInfo: {
   [key: string]: {
@@ -116,8 +117,8 @@ export const runStrategy = async (
       return 'Strategy is stopped';
     }
     if (intervalId[strategyId]) {
-      delete intervalId[strategyId];
       clearTimeout(intervalId[strategyId]);
+      delete intervalId[strategyId];
     }
     const mainExchangeAccount = await getAccount(
       strategy.mainExchangeAccountId
@@ -146,7 +147,8 @@ export const runStrategy = async (
           secondExchangeAccount.name
         } Account Unavailable.`;
       }
-      await toRun(
+      const updateTime = new Date().getTime();
+      const res = await toRun(
         strategy,
         exchange,
         robotType,
@@ -158,22 +160,35 @@ export const runStrategy = async (
       if (orders && orders.length >= errorMax) {
         await updateStrategyStatus(strategyId, StrategyStatus.Stopped);
         return '';
+      } else if (strategy.status === StrategyStatus.Stopped) {
+        await updateStrategyStatus(
+          strategyId,
+          StrategyStatus.Running,
+          updateTime
+        );
       }
       const config = JSON.parse(strategy.arguments) as TimerConfig;
-      let interval = 1000 * 60;
       if (robotType[strategy.typeId] === RobotName.Timer) {
-        interval = Number(config.interval) * 1000 * 60;
+        if (res && res === 'runTimer') {
+          runStrategy(strategy.id, false);
+        } else {
+          const interval = Number(config.interval) * 1000 * 60;
+          const range = interval * 0.1;
+          const min = interval - range;
+          const max = interval + range;
+          const intervalTime =
+            Math.floor(Math.random() * (max - min + 1)) + min;
+          intervalId[strategy.id] = setTimeout(() => {
+            runStrategy(strategy.id, false);
+          }, intervalTime);
+        }
       } else {
         // 3S
-        interval = Number(config.interval) * 1000;
+        const interval = 3 * 1000;
+        intervalId[strategy.id] = setTimeout(() => {
+          runStrategy(strategy.id, false);
+        }, interval);
       }
-      const range = interval * 0.1;
-      const min = interval - range;
-      const max = interval + range;
-      const intervalTime = Math.floor(Math.random() * (max - min + 1)) + min;
-      intervalId[strategy.id] = setTimeout(() => {
-        runStrategy(strategy.id, false);
-      }, intervalTime);
     }
   }
   return '';
@@ -1019,8 +1034,8 @@ export const cancelPending = async (
   mainAccount: Identity | BinanceConfig
 ): Promise<void> => {
   if (intervalId[strategyId]) {
-    delete intervalId[strategyId];
     clearTimeout(intervalId[strategyId]);
+    delete intervalId[strategyId];
   }
   const pendingOrder = await getPendingOrders(strategyId);
   const mainOrders: Array<string> = [];
@@ -1163,8 +1178,8 @@ export const cancelAll = async (): Promise<void> => {
     for (let i = 0; i < allPendingOrders.length; i++) {
       const pending = allPendingOrders[i];
       if (intervalId[pending.strategyId]) {
-        delete intervalId[pending.strategyId];
         clearTimeout(intervalId[pending.strategyId]);
+        delete intervalId[pending.strategyId];
       }
       if (!strategyInfo[pending.strategyId]) {
         const strategy = await getStrategy(pending.strategyId);
@@ -2592,6 +2607,8 @@ export const toRunTimer = async (
               );
               if (typeof res === 'string') {
                 return res;
+              } else {
+                return 'runTimer';
               }
             } else if (
               new BigNumber(ICDexRes.buyToken0NeedToken1).gt(0) &&
@@ -2618,6 +2635,8 @@ export const toRunTimer = async (
               );
               if (typeof res === 'string') {
                 return res;
+              } else {
+                return 'runTimer';
               }
             }
           } else {

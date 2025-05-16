@@ -575,10 +575,14 @@ export const getAllPendingOrders = async (): Promise<Array<Orders>> => {
 };
 export const updateStrategyStatus = async (
   id: number,
-  status: StrategyStatus
+  status: StrategyStatus,
+  updateTime?: number
 ): Promise<Strategy | null> => {
   const db = await createConnection();
-  const time = new Date().getTime();
+  let time = new Date().getTime();
+  if (updateTime) {
+    time = updateTime;
+  }
   const stmt = db.prepare(
     `UPDATE strategy SET status = ? , updateTime = ? WHERE id = ?`
   );
@@ -1386,7 +1390,10 @@ export const getBalanceChanges = async (
     'SELECT * FROM balanceChanges WHERE strategyId = ? ORDER BY id DESC LIMIT 1'
   );
   try {
-    return await withRetry(() => stmt.all(strategyId));
+    const balanceChanges = await withRetry<Array<BalanceChanges>>(() =>
+      stmt.all(strategyId)
+    );
+    return balanceChanges[0];
   } catch (err) {
     if (err) {
       console.error(err);

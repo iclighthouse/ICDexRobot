@@ -283,18 +283,30 @@ export class ICDexOrderMixin extends Vue {
     let token1ValueOrder = '0';
     if (ICDexInfo.status === 'Completed') {
       const filled = JSON.parse(ICDexInfo.filled) as ICDexCompletedFilled;
-      const order = JSON.parse(ICDexInfo.origOrder) as ICDexOrder;
       if (
-        !filled.token1Value.CreditRecord &&
-        order.token0Value.length &&
-        order.token1Value.length
+        !filled.token1Value.CreditRecord ||
+        !Number(filled.token1Value.CreditRecord)
       ) {
-        if (side === 'Buy') {
-          token0ValueOrder = order.token0Value[0].CreditRecord.toString(10);
-          token1ValueOrder = order.token1Value[0].DebitRecord.toString(10);
-        } else {
-          token0ValueOrder = order.token0Value[0].DebitRecord.toString(10);
-          token1ValueOrder = order.token1Value[0].CreditRecord.toString(10);
+        if (ICDexInfo.origOrder) {
+          const order = JSON.parse(ICDexInfo.origOrder) as ICDexOrder;
+          if (side === 'Buy') {
+            token0ValueOrder = order.token0Value[0].CreditRecord.toString(10);
+            token1ValueOrder = order.token1Value[0].DebitRecord.toString(10);
+          } else {
+            token0ValueOrder = order.token0Value[0].DebitRecord.toString(10);
+            token1ValueOrder = order.token1Value[0].CreditRecord.toString(10);
+          }
+        } else if (ICDexInfo.orderPrice) {
+          const price = this.filterOrderVal(
+            new BigNumber(
+              this.getPendingPrice(JSON.parse(ICDexInfo.orderPrice), pairInfo)
+            ).toString(10)
+          );
+          return {
+            token0ValueOrder: token0ValueOrder,
+            token1ValueOrder: token1ValueOrder,
+            price: price
+          };
         }
       } else {
         if (side === 'Buy') {
@@ -426,13 +438,19 @@ export class ICDexOrderMixin extends Vue {
           const token1Decimals = token1Info.decimals;
           if (ICDexInfo.status === 'Completed') {
             const filled = JSON.parse(ICDexInfo.filled) as ICDexCompletedFilled;
-            const order = JSON.parse(ICDexInfo.origOrder) as ICDexOrder;
-            if (!filled.token0Value.CreditRecord && order.token0Value.length) {
-              return new BigNumber(
-                order.token0Value[0].CreditRecord.toString(10)
-              )
-                .div(10 ** token0Decimals)
-                .toString(10);
+            if (!filled.token0Value.CreditRecord && ICDexInfo.origOrder) {
+              const order = JSON.parse(ICDexInfo.origOrder) as ICDexOrder;
+              if (order.token0Value.length) {
+                return new BigNumber(
+                  order.token0Value[0].CreditRecord.toString(10)
+                )
+                  .div(10 ** token0Decimals)
+                  .toString(10);
+              }
+            }
+            if (!ICDexInfo.origOrder && ICDexInfo.orderPrice) {
+              const orderPrice = JSON.parse(ICDexInfo.orderPrice) as OrderPrice;
+              return this.getPendingToken0(orderPrice, token0Decimals);
             }
             if (balanceChangesFilled && balanceChangesFilled.token1) {
               let token0 = '0';
@@ -598,11 +616,23 @@ export class ICDexOrderMixin extends Vue {
         const token1Decimals = token1Info.decimals;
         if (ICDexInfo.status === 'Completed') {
           const filled = JSON.parse(ICDexInfo.filled) as ICDexCompletedFilled;
-          const order = JSON.parse(ICDexInfo.origOrder) as ICDexOrder;
-          if (!filled.token1Value.DebitRecord && order.token1Value.length) {
-            return new BigNumber(order.token1Value[0].DebitRecord.toString(10))
-              .div(10 ** token1Decimals)
-              .toString(10);
+          if (!filled.token1Value.DebitRecord && ICDexInfo.origOrder) {
+            const order = JSON.parse(ICDexInfo.origOrder) as ICDexOrder;
+            if (order.token1Value.length) {
+              return new BigNumber(
+                order.token1Value[0].DebitRecord.toString(10)
+              )
+                .div(10 ** token1Decimals)
+                .toString(10);
+            }
+          }
+          if (!ICDexInfo.origOrder && ICDexInfo.orderPrice) {
+            const orderPrice = JSON.parse(ICDexInfo.orderPrice) as OrderPrice;
+            return this.getPendingToken1Total(
+              orderPrice,
+              pairInfo,
+              token0Decimals
+            );
           }
           if (balanceChangesFilled && balanceChangesFilled.token0) {
             let token1 = '0';
@@ -772,13 +802,21 @@ export class ICDexOrderMixin extends Vue {
         } else {
           if (ICDexInfo.status === 'Completed') {
             const filled = JSON.parse(ICDexInfo.filled) as ICDexCompletedFilled;
-            const order = JSON.parse(ICDexInfo.origOrder) as ICDexOrder;
-            if (!filled.token1Value.CreditRecord && order.token1Value.length) {
+            if (!filled.token1Value.CreditRecord && ICDexInfo.origOrder) {
+              const order = JSON.parse(ICDexInfo.origOrder) as ICDexOrder;
               return new BigNumber(
                 order.token1Value[0].CreditRecord.toString(10)
               )
                 .div(10 ** token1Decimals)
                 .toString(10);
+            }
+            if (!ICDexInfo.origOrder && ICDexInfo.orderPrice) {
+              const orderPrice = JSON.parse(ICDexInfo.orderPrice) as OrderPrice;
+              return this.getPendingToken1Total(
+                orderPrice,
+                pairInfo,
+                token0Decimals
+              );
             }
             if (balanceChangesFilled && balanceChangesFilled.token0) {
               let token1 = '0';
@@ -946,11 +984,19 @@ export class ICDexOrderMixin extends Vue {
         const token1Decimals = token1Info.decimals;
         if (ICDexInfo.status === 'Completed') {
           const filled = JSON.parse(ICDexInfo.filled) as ICDexCompletedFilled;
-          const order = JSON.parse(ICDexInfo.origOrder) as ICDexOrder;
-          if (!filled.token0Value.DebitRecord && order.token0Value.length) {
-            return new BigNumber(order.token0Value[0].DebitRecord.toString(10))
-              .div(10 ** token0Decimals)
-              .toString(10);
+          if (!filled.token0Value.DebitRecord && ICDexInfo.origOrder) {
+            const order = JSON.parse(ICDexInfo.origOrder) as ICDexOrder;
+            if (order.token0Value.length) {
+              return new BigNumber(
+                order.token0Value[0].DebitRecord.toString(10)
+              )
+                .div(10 ** token0Decimals)
+                .toString(10);
+            }
+          }
+          if (!ICDexInfo.origOrder && ICDexInfo.orderPrice) {
+            const orderPrice = JSON.parse(ICDexInfo.orderPrice) as OrderPrice;
+            return this.getPendingToken0(orderPrice, token0Decimals);
           }
           if (balanceChangesFilled && balanceChangesFilled.token1) {
             let token0 = '0';
@@ -1097,6 +1143,22 @@ export class ICDexOrderMixin extends Vue {
       val = val as ICDexOrderInfoDB;
       if (val.status === 'None') {
         return 'Failed';
+      } else if (val.orderPrice) {
+        const orderPrice = JSON.parse(val.orderPrice) as OrderPrice;
+        if (orderPrice && orderPrice.quantity) {
+          const quantity = orderPrice.quantity;
+          if (
+            (
+              quantity as {
+                Buy: [bigint, bigint];
+              }
+            ).Buy
+          ) {
+            return 'Buy';
+          } else {
+            return 'Sell';
+          }
+        }
       } else if (val.status === 'Completed') {
         const order = JSON.parse(val.origOrder) as ICDexOrder;
         if (order && order.token0Value && order.token0Value.length) {
@@ -1109,22 +1171,6 @@ export class ICDexOrderMixin extends Vue {
         } else if (order && order.token1Value && order.token1Value.length) {
           const orderType = Object.keys(order.token1Value[0])[0];
           if (orderType === 'DebitRecord') {
-            return 'Buy';
-          } else {
-            return 'Sell';
-          }
-        }
-      } else {
-        const orderPrice = JSON.parse(val.orderPrice) as OrderPrice;
-        if (orderPrice && orderPrice.quantity) {
-          const quantity = orderPrice.quantity;
-          if (
-            (
-              quantity as {
-                Buy: [bigint, bigint];
-              }
-            ).Buy
-          ) {
             return 'Buy';
           } else {
             return 'Sell';

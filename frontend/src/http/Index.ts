@@ -2,7 +2,7 @@ import axios from 'axios';
 import { User } from '@/views/home/model';
 const http = axios.create({
   baseURL: 'http://localhost:26535',
-  timeout: 10000
+  timeout: 30 * 1000
 });
 http.interceptors.request.use(
   async (config) => {

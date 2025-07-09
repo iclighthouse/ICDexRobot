@@ -24,8 +24,10 @@ import {
 import {
   addExchangeAccount,
   addStrategy,
+  deleteAccount,
   deleteStrategyStatus,
   getAccounts,
+  getBalanceChanges,
   getBalanceChangesByMainExchangeOrderId,
   getExchangeAccounts,
   getExchanges,
@@ -36,11 +38,13 @@ import {
   getUser,
   insertUser,
   queryOrders,
+  updateAccountStatus,
   updateStrategyConfig,
   updateStrategyStatus
 } from '../db';
 import {
   Account,
+  AccountStatus,
   Exchange,
   ExchangeName,
   OrdersRow,
@@ -55,7 +59,6 @@ import {
 import { cancelAll, runStrategy } from '../trade';
 import { NextFunction } from 'express-serve-static-core';
 import bcrypt from 'bcrypt';
-import { Balance } from '../trade/model';
 
 const router = Router();
 
@@ -504,6 +507,50 @@ router.post(
   }
 );
 router.post(
+  '/deleteAccount',
+  (
+    req: Request<
+      {},
+      {},
+      {
+        accountId: number;
+      }
+    >,
+    res: Response
+  ) => {
+    const { accountId } = req.body;
+    deleteAccount(accountId)
+      .then((response) => {
+        res.status(200).json(response);
+      })
+      .catch((e) => {
+        res.status(400).json(e);
+      });
+  }
+);
+router.post(
+  '/setAccountAvailable',
+  (
+    req: Request<
+      {},
+      {},
+      {
+        accountId: number;
+      }
+    >,
+    res: Response
+  ) => {
+    const { accountId } = req.body;
+    updateAccountStatus(accountId, AccountStatus.Available)
+      .then((response) => {
+        res.status(200).json(response);
+      })
+      .catch((e) => {
+        res.status(400).json(e);
+      });
+  }
+);
+router.post(
   '/updateStrategyConfig',
   (
     req: Request<
@@ -619,6 +666,25 @@ router.get(
       res.status(200).json(filled);
     } catch (e) {
       res.status(400).json(null);
+    }
+  }
+);
+router.get(
+  '/getBalanceChanges',
+  async (
+    req: Request<{}, {}, {}, { strategyId: number }>,
+    res: Response<{ token0: string; token1: string }>
+  ) => {
+    try {
+      const { strategyId } = req.query;
+      const balance = await getBalanceChanges(strategyId);
+      const filled = {
+        token0: balance?.token0Balance.toString(10) || '0',
+        token1: balance?.token1Balance.toString(10) || '0'
+      };
+      res.status(200).json(filled);
+    } catch (e) {
+      res.status(200).json({ token0: '0', token1: '0' });
     }
   }
 );

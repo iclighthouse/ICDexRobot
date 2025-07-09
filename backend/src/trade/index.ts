@@ -74,6 +74,7 @@ import {
 import { clearTimeout, setTimeout } from 'timers';
 import {
   filterSide,
+  generateICDexTradeData,
   getICDexBuyResponse,
   getICDexSellResponse,
   getICDexToken0AndToken1,
@@ -93,6 +94,7 @@ import {
   onBinanceSell
 } from './binanceTrade';
 import { OrderPrice } from '../ic/ICDex/ICDex.idl';
+import { sendEventToClients } from '../routes';
 
 const interval = 5 * 1000;
 const binanceAccountInfo: {
@@ -102,6 +104,7 @@ const binanceAccountInfo: {
   };
 } = {};
 const intervalId: { [key: string]: NodeJS.Timeout } = {};
+const cancel: { [key: string]: number } = {};
 const pendingMax = 5;
 const errorMax = 3;
 export const runStrategy = async (
@@ -111,10 +114,10 @@ export const runStrategy = async (
   const strategy = await getStrategy(strategyId);
   if (strategy) {
     if (init && strategy.status === StrategyStatus.Running) {
-      return 'Strategy is running';
+      return `${strategyId} is running`;
     }
     if (!init && strategy.status === StrategyStatus.Stopped) {
-      return 'Strategy is stopped';
+      return `${strategyId} is stopped`;
     }
     if (intervalId[strategyId]) {
       clearTimeout(intervalId[strategyId]);
@@ -938,12 +941,35 @@ export const cancelMarketPendingAndUpdateICDex = async (
   txid: string,
   identity: Identity
 ): Promise<void> => {
-  const service = new ICDexService();
-  const flag = await service.cancelByTxid(pairId, identity, hexToBytes(txid));
-  if (flag) {
-    await insertOrUpdateICDexOrderInfo(strategyId, pairId, txid);
-    // sendEventToClients(strategyId, '', 'Trade');
-    await updateOrderIdMaker(id);
+  try {
+    if (!cancel[txid]) {
+      cancel[txid] = 0;
+    } else {
+      ++cancel[txid];
+    }
+    if (cancel[txid] >= 2) {
+      delete cancel[txid];
+      return;
+    }
+    const service = new ICDexService();
+    const flag = await service.cancelByTxid(pairId, identity, hexToBytes(txid));
+    if (flag) {
+      await insertOrUpdateICDexOrderInfo(strategyId, pairId, txid);
+      sendEventToClients(strategyId, '', 'Trade');
+      await updateOrderIdMaker(id);
+    }
+  } catch (e) {
+    if (cancel[txid] && cancel[txid] < 2) {
+      await cancelMarketPendingAndUpdateICDex(
+        strategyId,
+        id,
+        pairId,
+        address,
+        txid,
+        identity
+      );
+    }
+    console.error(e);
   }
 };
 export const cancelPendingOrder = async (
@@ -1602,6 +1628,13 @@ export const pendingOrderSellICDex = async (
         quantity: { Sell: token0SellAmount },
         price: BigInt(sellRes.ICDexPriceSell)
       };
+      const strategyInfo = await getStrategy(strategy.id);
+      if (
+        strategyInfo?.status &&
+        strategyInfo.status === StrategyStatus.Stopped
+      ) {
+        return '';
+      }
       const res = await onICDexSell(
         strategy.id,
         ICDePairInfo,
@@ -1638,6 +1671,8 @@ export const pendingOrderSellICDex = async (
               'AddToken1'
             );
           }
+        } else {
+          console.error(res);
         }
       }
     }
@@ -1896,6 +1931,13 @@ export const pendingOrderBuyICDex = async (
         quantity: { Buy: [BigInt(token0BuyAmount), token1Amount] },
         price: BigInt(buyRes.ICDexPriceBuy)
       };
+      const strategyInfo = await getStrategy(strategy.id);
+      if (
+        strategyInfo?.status &&
+        strategyInfo.status === StrategyStatus.Stopped
+      ) {
+        return '';
+      }
       const res = await onICDexBuy(
         strategy.id,
         ICDePairInfo,
@@ -1932,6 +1974,8 @@ export const pendingOrderBuyICDex = async (
               'AddToken0'
             );
           }
+        } else {
+          console.error(res);
         }
       }
     }
@@ -2483,6 +2527,7 @@ export const hasPendingOrders = async (
       account.getPrincipal().toString()
     );
     if (pending && pending.data && pending.data.length) {
+      const promise: Array<Promise<void>> = [];
       pending.data.forEach((item) => {
         const txid = toHexString(new Uint8Array(item[0]));
         const status = Object.keys(item[1].status)[0];
@@ -2491,8 +2536,35 @@ export const hasPendingOrders = async (
         }
         if (!mainOrders.includes(txid) && status === 'Pending') {
           // todo pending
+          if (item[1].data && item[1].data[0]) {
+            const data = toHexString(new Uint8Array(item[1].data[0]));
+            const ICDexTradeData = toHexString(
+              new Uint8Array(
+                generateICDexTradeData(pairInfo.pairId, account.getPrincipal())
+              )
+            );
+            if (data === ICDexTradeData) {
+              promise.push(
+                insertOrUpdateICDexOrderInfo(strategyId, pairInfo.pairId, txid)
+              );
+              promise.push(
+                insertOrderIdOrUpdate(
+                  strategyId,
+                  txid,
+                  null,
+                  '',
+                  '',
+                  OrdersStatus.Pending
+                )
+              );
+              flag = true;
+            }
+          }
         }
       });
+      if (promise.length) {
+        await Promise.all(promise);
+      }
     }
   } else if (mainExchangeName === ExchangeName.Binance) {
     const pairInfo = mainPairInfo as BinanceSymbolDB;
@@ -3579,7 +3651,11 @@ export const toSellICDex = async (
         txid
       );
     }
-    if (balanceChangesType && balanceChangesType === 'AddToken1') {
+    if (
+      balanceChangesType &&
+      (balanceChangesType === 'SubtractToken1' ||
+        balanceChangesType === 'AddToken1')
+    ) {
       const token0 = -token0Value;
       await updateBalanceChanges(
         strategy.id,
@@ -3680,7 +3756,11 @@ export const toSellICDex = async (
         txid
       );
     }
-    if (balanceChangesType && balanceChangesType === 'AddToken1') {
+    if (
+      balanceChangesType &&
+      (balanceChangesType === 'SubtractToken1' ||
+        balanceChangesType === 'AddToken1')
+    ) {
       const token0 = -token0Value;
       await updateBalanceChanges(
         strategy.id,
@@ -3786,7 +3866,11 @@ export const toSellBinance = async (
         orderId
       );
     }
-    if (balanceChangesType && balanceChangesType === 'AddToken1') {
+    if (
+      balanceChangesType &&
+      (balanceChangesType === 'SubtractToken1' ||
+        balanceChangesType === 'AddToken1')
+    ) {
       const token0 = -token0Value;
       await updateBalanceChanges(
         strategy.id,
@@ -3881,7 +3965,11 @@ export const toSellBinance = async (
         orderId
       );
     }
-    if (balanceChangesType && balanceChangesType === 'AddToken1') {
+    if (
+      balanceChangesType &&
+      (balanceChangesType === 'SubtractToken1' ||
+        balanceChangesType === 'AddToken1')
+    ) {
       const token0 = -token0Value;
       await updateBalanceChanges(
         strategy.id,
@@ -4054,7 +4142,11 @@ export const toBuyICDex = async (
         txid
       );
     }
-    if (balanceChangesType && balanceChangesType === 'AddToken0') {
+    if (
+      balanceChangesType &&
+      (balanceChangesType === 'SubtractToken0' ||
+        balanceChangesType === 'AddToken0')
+    ) {
       const token1 = -token1Value;
       await updateBalanceChanges(
         strategy.id,
@@ -4157,7 +4249,11 @@ export const toBuyICDex = async (
         );
       }
     }
-    if (balanceChangesType && balanceChangesType === 'AddToken0') {
+    if (
+      balanceChangesType &&
+      (balanceChangesType === 'SubtractToken0' ||
+        balanceChangesType === 'AddToken0')
+    ) {
       const token1 = -token1Value;
       if (Number(token1) < 0) {
         await updateBalanceChanges(
@@ -4265,7 +4361,11 @@ export const toBuyBinance = async (
         orderId
       );
     }
-    if (balanceChangesType && balanceChangesType === 'AddToken0') {
+    if (
+      balanceChangesType &&
+      (balanceChangesType === 'SubtractToken0' ||
+        balanceChangesType === 'AddToken0')
+    ) {
       const token1 = -token1Value;
       await updateBalanceChanges(
         strategy.id,
@@ -4362,7 +4462,11 @@ export const toBuyBinance = async (
         );
       }
     }
-    if (balanceChangesType && balanceChangesType === 'AddToken0') {
+    if (
+      balanceChangesType &&
+      (balanceChangesType === 'SubtractToken0' ||
+        balanceChangesType === 'AddToken0')
+    ) {
       const token1 = -token1Value;
       if (Number(token1) < 0) {
         await updateBalanceChanges(
@@ -4423,19 +4527,25 @@ export const tradeCumulativeAmountICDex = async (
   const token0 = await Promise.all(promiseValue);
   if (token0 && token0.length) {
     token0.forEach((item) => {
-      token0Pending = new BigNumber(item.add).minus(item.subtract).toString(10);
+      token0Pending = new BigNumber(item.add)
+        .minus(item.subtract)
+        .plus(token0Pending)
+        .toString(10);
     });
   }
   let token1Pending = '0';
   const token1 = await Promise.all(promiseValueToken1);
   if (token1 && token1.length) {
     token1.forEach((item) => {
-      token1Pending = new BigNumber(item.add).minus(item.subtract).toString(10);
+      token1Pending = new BigNumber(item.add)
+        .minus(item.subtract)
+        .plus(token1Pending)
+        .toString(10);
     });
   }
   const res = await getBalanceChanges(strategy.id);
   if (res && res.token0Balance) {
-    const token0 = new BigNumber(res.token0Balance)
+    const token0Balance = new BigNumber(res.token0Balance)
       .minus(token0Pending)
       .toString(10);
     await ICDexBuyToBinanceTrade(
@@ -4447,8 +4557,8 @@ export const tradeCumulativeAmountICDex = async (
       binanceBalanceTwo,
       binanceConfig,
       '',
-      token0,
-      token0,
+      token0Balance,
+      token0Balance,
       '0',
       0,
       OrdersStatus.Completed,
@@ -4456,7 +4566,7 @@ export const tradeCumulativeAmountICDex = async (
     );
   }
   if (res && res.token1Balance) {
-    const token1 = new BigNumber(res.token1Balance)
+    const token1Balance = new BigNumber(res.token1Balance)
       .minus(token1Pending)
       .toString(10);
     await ICDexSellToBinanceTrade(
@@ -4468,8 +4578,8 @@ export const tradeCumulativeAmountICDex = async (
       binanceBalanceTwo,
       binanceConfig,
       '',
-      token1,
-      token1,
+      token1Balance,
+      token1Balance,
       '0',
       0,
       OrdersStatus.Completed,
@@ -4503,19 +4613,25 @@ export const tradeCumulativeAmountBinance = async (
   const token0 = await Promise.all(promiseValue);
   if (token0 && token0.length) {
     token0.forEach((item) => {
-      token0Pending = new BigNumber(item.add).minus(item.subtract).toString(10);
+      token0Pending = new BigNumber(item.add)
+        .minus(item.subtract)
+        .plus(token0Pending)
+        .toString(10);
     });
   }
   let token1Pending = '0';
   const token1 = await Promise.all(promiseValueToken1);
   if (token1 && token1.length) {
     token1.forEach((item) => {
-      token1Pending = new BigNumber(item.add).minus(item.subtract).toString(10);
+      token1Pending = new BigNumber(item.add)
+        .minus(item.subtract)
+        .plus(token1Pending)
+        .toString(10);
     });
   }
   const res = await getBalanceChanges(strategy.id);
   if (res && res.token0Balance) {
-    const token0 = new BigNumber(res.token0Balance)
+    const token0Balance = new BigNumber(res.token0Balance)
       .minus(token0Pending)
       .toString(10);
     await binanceBuyToICDexTrade(
@@ -4527,8 +4643,8 @@ export const tradeCumulativeAmountBinance = async (
       ICDexBalanceTwo,
       identity,
       '',
-      token0,
-      token0,
+      token0Balance,
+      token0Balance,
       '0',
       0,
       OrdersStatus.Completed,
@@ -4536,7 +4652,7 @@ export const tradeCumulativeAmountBinance = async (
     );
   }
   if (res && res.token1Balance) {
-    const token1 = new BigNumber(res.token1Balance)
+    const token1Balance = new BigNumber(res.token1Balance)
       .minus(token1Pending)
       .toString(10);
     await binanceSellToICDexTrade(
@@ -4548,8 +4664,8 @@ export const tradeCumulativeAmountBinance = async (
       ICDexBalanceTwo,
       identity,
       '',
-      token1,
-      token1,
+      token1Balance,
+      token1Balance,
       '0',
       0,
       OrdersStatus.Completed,

@@ -1,4 +1,5 @@
 import { Balance, DepthToken, TimerConfig } from './model';
+import { sha224 } from '@noble/hashes/sha256';
 import BigNumber from 'bignumber.js';
 import {
   ICDexBuyResponse,
@@ -17,10 +18,16 @@ import {
   TxnRecord
 } from '../ic/ICDex/ICDex.idl';
 import { Identity } from '@dfinity/agent';
-import { hexToBytes, toHexString } from '../ic/converter';
+import {
+  asciiStringToByteArray,
+  hexToBytes,
+  principalToAccount,
+  toHexString
+} from '../ic/converter';
 import { DexSetting, TokenInfo } from '../model';
 import { insertOrUpdateICDexOrderInfo } from '../db';
 import { sendEventToClients } from '../routes';
+import { Principal } from '@dfinity/principal';
 export const onICDexBuy = async (
   strategyId: number,
   pairInfo: ICDexPairInfoDB,
@@ -42,15 +49,34 @@ export const onICDexBuy = async (
     return message;
   }
   const service = new ICDexService();
+  const data = generateICDexTradeData(pairInfo.pairId, identity.getPrincipal());
   let res;
   if (type === 'MKT') {
-    res = await service.trade(pairInfo.pairId, identity, orderPrice, {
-      MKT: null
-    });
+    res = await service.trade(
+      pairInfo.pairId,
+      identity,
+      orderPrice,
+      {
+        MKT: null
+      },
+      [],
+      [],
+      0,
+      [data]
+    );
   } else {
-    res = await service.trade(pairInfo.pairId, identity, orderPrice, {
-      LMT: null
-    });
+    res = await service.trade(
+      pairInfo.pairId,
+      identity,
+      orderPrice,
+      {
+        LMT: null
+      },
+      [],
+      [],
+      0,
+      [data]
+    );
   }
   if ((res as TradingResultOk).ok) {
     const response = await getICDexBuyResponse(
@@ -94,15 +120,34 @@ export const onICDexSell = async (
     return message;
   }
   const service = new ICDexService();
+  const data = generateICDexTradeData(pairInfo.pairId, identity.getPrincipal());
   let res;
   if (type === 'MKT') {
-    res = await service.trade(pairInfo.pairId, identity, orderPrice, {
-      MKT: null
-    });
+    res = await service.trade(
+      pairInfo.pairId,
+      identity,
+      orderPrice,
+      {
+        MKT: null
+      },
+      [],
+      [],
+      0,
+      [data]
+    );
   } else {
-    res = await service.trade(pairInfo.pairId, identity, orderPrice, {
-      LMT: null
-    });
+    res = await service.trade(
+      pairInfo.pairId,
+      identity,
+      orderPrice,
+      {
+        LMT: null
+      },
+      [],
+      [],
+      0,
+      [data]
+    );
   }
   if ((res as TradingResultOk).ok) {
     const txid = toHexString(new Uint8Array((res as TradingResultOk).ok.txid));
@@ -876,4 +921,20 @@ export const filterSide = (orderPrice: OrderPrice): string => {
   } else {
     return 'Sell';
   }
+};
+export const generateICDexTradeData = (
+  pairId: string,
+  caller: Principal,
+  subAccount?: Uint8Array | undefined
+): Array<number> => {
+  const padding = asciiStringToByteArray('Robot');
+  const shaObj = sha224.create();
+  shaObj.update(
+    new Uint8Array([
+      ...padding,
+      ...Principal.fromText(pairId).toUint8Array(),
+      ...new Uint8Array(principalToAccount(caller, subAccount))
+    ])
+  );
+  return Array.from(new Uint8Array(shaObj.digest()));
 };

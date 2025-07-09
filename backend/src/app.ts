@@ -24,7 +24,7 @@ const setCacheControl = function (
 app.use(cors());
 app.use(auth);
 app.use(setCacheControl);
-app.use(express.static('dist'));
+app.use(express.static('frontend'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/', indexRouter);

@@ -226,6 +226,7 @@ export interface Account {
   minimumFee: string;
   time: number;
   updateTime: number;
+  hasStrategy: boolean;
 }
 export interface OrderDB {
   id: number;

@@ -13,6 +13,7 @@ import {
 } from './ic/model';
 import {
   Account,
+  AccountStatus,
   BalanceChanges,
   Exchange,
   ExchangeName,
@@ -86,7 +87,7 @@ export const initDb = async (): Promise<void> => {
     );
     await withRetry(() => exchangesICDex.run(new Date().getTime()));
     const exchangesBinance = db.prepare(
-      `INSERT INTO exchanges (name, type, time) SELECT 'Binance', 'DEX', ? WHERE NOT EXISTS (SELECT 1 FROM exchanges WHERE name = 'Binance' AND type = 'DEX')`
+      `INSERT INTO exchanges (name, type, time) SELECT 'Binance', 'CEX', ? WHERE NOT EXISTS (SELECT 1 FROM exchanges WHERE name = 'Binance' AND type = 'CEX')`
     );
     await withRetry(() => exchangesBinance.run(new Date().getTime()));
     // value: ICDex: pem; Binance: APIKey and RSA Private Key
@@ -531,6 +532,51 @@ export const getStrategy = async (id: number): Promise<Strategy | null> => {
     await closeConnection(db);
   }
 };
+export const updateAccountStatus = async (
+  id: number,
+  status: AccountStatus
+): Promise<number | null> => {
+  const db = await createConnection();
+  try {
+    const time = new Date().getTime();
+    const stmt = db.prepare(
+      `UPDATE accounts SET status = ? , updateTime = ? WHERE id = ?`
+    );
+    return await withRetry<number>(() => stmt.run(status, time, id));
+  } catch (err) {
+    if (err) {
+      console.error(err);
+    }
+    return null;
+  } finally {
+    await closeConnection(db);
+  }
+};
+export const deleteAccount = async (id: number): Promise<RunResult | null> => {
+  const db = await createConnection();
+  try {
+    const account = await getAccount(id);
+    const checkStrategyStmt = db.prepare(`
+      SELECT 1 FROM strategy
+        WHERE mainExchangeAccountId = ? OR secondExchangeAccountId = ?
+      LIMIT 1
+    `);
+    const inStrategy = await withRetry(() => checkStrategyStmt.get(id, id));
+    if (account && !inStrategy) {
+      const stmt = db.prepare('DELETE FROM accounts WHERE id = ?');
+      return await withRetry(() => stmt.run(id));
+    } else {
+      return null;
+    }
+  } catch (err) {
+    if (err) {
+      console.error(err);
+    }
+    return null;
+  } finally {
+    await closeConnection(db);
+  }
+};
 export const deleteStrategyStatus = async (
   id: number
 ): Promise<RunResult | null> => {
@@ -760,7 +806,21 @@ export const getExchangeAccounts = async (
   const db = await createConnection();
   const stmt = db.prepare(`SELECT * FROM accounts WHERE exchangeId = ?`);
   try {
-    return await withRetry(() => stmt.all(exchangeId));
+    const accounts = await withRetry<Array<Account>>(() =>
+      stmt.all(exchangeId)
+    );
+    const checkStrategyStmt = db.prepare(`
+      SELECT 1 FROM strategy
+        WHERE mainExchangeAccountId = ? OR secondExchangeAccountId = ?
+      LIMIT 1
+    `);
+    return accounts.map((account) => {
+      const inStrategy = checkStrategyStmt.get(account.id, account.id);
+      return {
+        ...account,
+        hasStrategy: !!inStrategy
+      };
+    });
   } catch (err) {
     if (err) {
       console.error(err);
@@ -774,7 +834,19 @@ export const getAccounts = async (): Promise<Array<Account>> => {
   const db = await createConnection();
   const stmt = db.prepare(`SELECT * FROM accounts`);
   try {
-    return await withRetry(() => stmt.all());
+    const accounts = await withRetry<Array<Account>>(() => stmt.all());
+    const checkStrategyStmt = db.prepare(`
+      SELECT 1 FROM strategy
+        WHERE mainExchangeAccountId = ? OR secondExchangeAccountId = ?
+      LIMIT 1
+    `);
+    return accounts.map((account) => {
+      const inStrategy = checkStrategyStmt.get(account.id, account.id);
+      return {
+        ...account,
+        hasStrategy: !!inStrategy
+      };
+    });
   } catch (err) {
     if (err) {
       console.error(err);

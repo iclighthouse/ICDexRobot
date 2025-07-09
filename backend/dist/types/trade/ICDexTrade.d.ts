@@ -1,0 +1,32 @@
+import { Balance, DepthToken, TimerConfig } from './model';
+import { ICDexBuyResponse, ICDexPairInfoDB, ICDexSellResponse } from '../ic/model';
+import { LevelResponse, OrderPrice } from '../ic/ICDex/ICDex.idl';
+import { Identity } from '@dfinity/agent';
+import { Principal } from '@dfinity/principal';
+export declare const onICDexBuy: (strategyId: number, pairInfo: ICDexPairInfoDB, orderPrice: OrderPrice, token0decimals: number, token1decimals: number, identity: Identity, token1Amount: string, balance: Balance, type?: string) => Promise<ICDexBuyResponse | string>;
+export declare const onICDexSell: (strategyId: number, pairInfo: ICDexPairInfoDB, orderPrice: OrderPrice, token0decimals: number, token1decimals: number, identity: Identity, token0Amount: string, balance: Balance, type?: string) => Promise<ICDexSellResponse | string>;
+export declare const ICDexCanSell: (token1: string, pairInfo: ICDexPairInfoDB, level100: LevelResponse, ICDexTradeFee: string, pairInfoTwo?: ICDexPairInfoDB | undefined, level100Two?: LevelResponse | undefined) => boolean;
+export declare const ICDexCanBuy: (token1: string, pairInfo: ICDexPairInfoDB, level100: LevelResponse, ICDexTradeFee: string, pairInfoTwo?: ICDexPairInfoDB | undefined, level100Two?: LevelResponse | undefined) => boolean;
+export declare const getICDexToken0SellMarket: (pairInfo: ICDexPairInfoDB, secondPairInfo: ICDexPairInfoDB, token1: string, ICDexTradeFee: string, invert: number) => Promise<string>;
+export declare const getICDexToken0BuyMarket: (pairInfo: ICDexPairInfoDB, secondPairInfo: ICDexPairInfoDB, token1: string, ICDexTradeFee: string, invert: number) => Promise<string>;
+export declare const getICDexMktToken0Sell: (pairInfo: ICDexPairInfoDB, token1: string, level100: LevelResponse, ICDexTradeFee: string, pairInfoTwo?: ICDexPairInfoDB | undefined, level100Two?: LevelResponse | undefined) => string;
+export declare const getICDexToken0Sell: (pairInfo: ICDexPairInfoDB, token1: string, level100: LevelResponse) => string;
+export declare const getICDexToken0AndToken1: (pairInfo: ICDexPairInfoDB, secondPairInfo: ICDexPairInfoDB, token: DepthToken, ICDexTradeFee: string, invert: number) => Promise<{
+    token0: string;
+    token1: string;
+}>;
+export declare const getICDexMktToken1: (pairInfo: ICDexPairInfoDB, token0: string, level100: LevelResponse, ICDexTradeFee: string, pairInfoTwo?: ICDexPairInfoDB | undefined, level100Two?: LevelResponse | undefined) => string;
+export declare const getICDexMktToken0: (pairInfo: ICDexPairInfoDB, token1: string, level100: LevelResponse, ICDexTradeFee: string, pairInfoTwo?: ICDexPairInfoDB | undefined, level100Two?: LevelResponse | undefined) => string;
+export declare const getICDexToken1AndToken0: (pairId: string, pairInfo: ICDexPairInfoDB, config: TimerConfig, ICDexTradeFee: string) => Promise<{
+    buyToken0NeedToken1: string;
+    sellToken0GetToken1: string;
+}>;
+export declare const getMktToken1Buy: (pairInfo: ICDexPairInfoDB, token0: string, level100: LevelResponse) => string;
+export declare const getMktToken0: (pairInfo: ICDexPairInfoDB, token1: string, level100: LevelResponse) => string;
+export declare const filterLevelPrice: (price: bigint, unitSize: bigint, token0Decimals: number, token1Decimals: number) => number;
+export declare const filterQuantity: (quantity: bigint, token0Decimals: number, tokenAmountUnit: number) => string;
+export declare const getMKTToken1: (pairInfo: ICDexPairInfoDB, token0: string, level100: LevelResponse) => string;
+export declare const getICDexBuyResponse: (pairInfo: ICDexPairInfoDB, txid: string, token0decimals: number, token1decimals: number) => Promise<ICDexBuyResponse | string>;
+export declare const getICDexSellResponse: (pairInfo: ICDexPairInfoDB, txid: string, token0decimals: number, token1decimals: number) => Promise<ICDexSellResponse | string>;
+export declare const filterSide: (orderPrice: OrderPrice) => string;
+export declare const generateICDexTradeData: (pairId: string, caller: Principal, subAccount?: Uint8Array | undefined) => Array<number>;

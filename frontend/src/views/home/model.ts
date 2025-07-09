@@ -272,6 +272,10 @@ export interface RunningStatus {
   startTime: number;
   stopTime: number;
 }
+export interface OddLot {
+  token0: string;
+  token1: string;
+}
 export interface Robot {
   id: number;
   status: RobotStatus;
@@ -360,6 +364,7 @@ export interface Account {
   minimumFee: string;
   time: number;
   updateTime: number;
+  hasStrategy: boolean;
 }
 export interface ExchangeTable extends Exchange {
   account: Account;

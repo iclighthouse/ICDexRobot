@@ -1,6 +1,9 @@
 import { Identity } from '@dfinity/agent';
 import { Ed25519KeyIdentity } from '@dfinity/identity';
 import { Secp256k1KeyIdentity } from '@dfinity/identity-secp256k1';
+import { Principal } from '@dfinity/principal';
+import { sha224 } from '@noble/hashes/sha256';
+import crc from 'crc';
 const EC = require('elliptic').ec;
 const KeyEncoder = require('key-encoder').default;
 const keyEncoder = new KeyEncoder('secp256k1');
@@ -106,10 +109,41 @@ const identityFromPem = (rawPrivateKey: string): Identity | null => {
     }
   }
 };
+const asciiStringToByteArray = (text: string): Array<number> => {
+  return Array.from(text).map((c) => c.charCodeAt(0));
+};
+// 4 bytes
+const calculateCrc32 = (bytes: Uint8Array): Uint8Array => {
+  const checksumArrayBuf = new ArrayBuffer(4);
+  const view = new DataView(checksumArrayBuf);
+  view.setUint32(0, crc.crc32(Buffer.from(bytes)), false);
+  return Buffer.from(checksumArrayBuf);
+};
+const principalToAccount = (
+  principal: Principal,
+  subAccount?: Uint8Array
+): Array<number> => {
+  // Hash (sha224) the principal, the subAccount and some padding
+  const padding = asciiStringToByteArray('\x0Aaccount-id');
+  const shaObj = sha224.create();
+  shaObj.update(
+    new Uint8Array([
+      ...padding,
+      ...principal.toUint8Array(),
+      ...(subAccount ?? Array(32).fill(0))
+    ])
+  );
+  const hash = new Uint8Array(shaObj.digest());
+  // Prepend the checksum of the hash
+  const checksum = calculateCrc32(hash);
+  return [...checksum, ...hash];
+};
 export {
   SerializableIC,
   fromSubAccountId,
   toHexString,
   hexToBytes,
-  identityFromPem
+  identityFromPem,
+  asciiStringToByteArray,
+  principalToAccount
 };

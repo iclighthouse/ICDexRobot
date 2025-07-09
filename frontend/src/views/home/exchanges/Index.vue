@@ -16,7 +16,15 @@
         </thead>
         <tbody class="lineHalf">
           <tr v-for="exchange in exchanges" :key="exchange.id">
-            <td>{{ exchange.id }}</td>
+            <td>
+              <a-checkbox
+                :checked="checked.includes(exchange.id)"
+                class="base-font-title"
+                @change="onChange(exchange.id)"
+              >
+                {{ exchange.id }}
+              </a-checkbox>
+            </td>
             <td>{{ exchange.type }}</td>
             <td>{{ exchange.name }}</td>
             <td>
@@ -129,14 +137,16 @@
                   :disabled="item.account.status === 'Available'"
                   type="button"
                   class="primary"
+                  @click="checkAccount(item)"
                 >
-                  Run
+                  Check
                 </button>
                 <!--robot running-->
                 <button
-                  :disabled="item.account.status === 'Available'"
+                  :disabled="item.account.hasStrategy"
                   type="button"
                   class="primary"
+                  @click="deleteAccount(item.account)"
                 >
                   Delete
                 </button>
@@ -192,7 +202,9 @@ import { identityFromPem } from '@/ic/utils';
 export default class extends Vue {
   private spinning = false;
   private exchanges: Array<Exchange> = [];
+  private checked: Array<number> = [];
   private exchangesTable: Array<ExchangeTable> = [];
+  private checkedExchangesTable: Array<ExchangeTable> = [];
   private exchangeStatus: {
     [key: number]: { Available: number; Unavailable: number };
   } = {};
@@ -203,14 +215,19 @@ export default class extends Vue {
   }
   private async getExchanges(): Promise<void> {
     try {
+      this.checked = [];
       const res = await this.$axios.get('/getExchanges');
       if (res && res.status === 200) {
         this.exchanges = res.data;
+        this.exchanges.forEach((item) => {
+          this.checked.push(item.id);
+        });
         this.initExchangesTable();
       }
     } catch (e) {}
   }
   private initExchangesTable(): void {
+    const checkedExchangesTable: Array<ExchangeTable> = [];
     this.exchanges.forEach((item) => {
       let available = 0;
       let unavailable = 0;
@@ -223,9 +240,15 @@ export default class extends Vue {
               ++unavailable;
             }
             const exchange = { ...item, account: account };
-            this.exchangesTable.push(exchange);
+            checkedExchangesTable.push(exchange);
           });
         }
+        this.checkedExchangesTable = checkedExchangesTable.sort((a, b) => {
+          return b.account.time - a.account.time;
+        });
+        this.exchangesTable = this.checkedExchangesTable.filter((item) =>
+          this.checked.includes(item.id)
+        );
         this.$set(this.exchangeStatus, item.id, {
           Available: available,
           Unavailable: unavailable
@@ -253,6 +276,7 @@ export default class extends Vue {
   }
   private addExchangeAccountSuccess(): void {
     this.exchangesTable = [];
+    this.checkedExchangesTable = [];
     this.initExchangesTable();
   }
   private filterBinanceAPIKey(value: string): string {
@@ -281,6 +305,132 @@ export default class extends Vue {
     }
     return '-';
   }
+  private onChange(id: number): void {
+    if (this.checked.includes(id)) {
+      this.checked = this.checked.filter((item) => item !== id);
+    } else {
+      this.checked.push(id);
+    }
+    this.exchangesTable = this.checkedExchangesTable.filter((item) =>
+      this.checked.includes(item.id)
+    );
+  }
+  private async checkAccount(item: ExchangeTable): Promise<void> {
+    if (this.exchange[item.id]) {
+      if (this.exchange[item.id] === 'ICDex') {
+        if (item.account && item.account.value) {
+          const val = JSON.parse(item.account.value);
+          const pem = val.pem;
+          console.log(pem);
+          const flag = identityFromPem(pem);
+          if (!flag) {
+            this.$message.error('Invalid Account');
+          } else {
+            // setAccountAvailable
+            const res = await this.$axios.post('setAccountAvailable', {
+              accountId: item.account.id
+            });
+            if (res && res.status === 200) {
+              this.$message.success('Account available');
+              this.exchangesTable = [];
+              this.checkedExchangesTable = [];
+              this.initExchangesTable();
+            } else {
+              this.$message.error('Update error');
+            }
+          }
+        }
+      } else if (this.exchange[item.id] === 'Binance') {
+        const val = JSON.parse(item.account.value);
+        const APIKey = val.APIKey;
+        const privateKey = val.privateKey;
+        const testBinance = await this.tradeOfBinanceTest(APIKey, privateKey);
+        console.log(testBinance);
+        if (testBinance) {
+          this.$message.error(testBinance);
+          this.spinning = false;
+          return;
+        } else {
+          const res = await this.$axios.post('setAccountAvailable', {
+            accountId: item.account.id
+          });
+          if (res && res.status === 200) {
+            this.$message.success('Account available');
+            this.exchangesTable = [];
+            this.checkedExchangesTable = [];
+            this.initExchangesTable();
+          } else {
+            this.$message.error('Update error');
+          }
+        }
+      }
+    }
+  }
+  private async tradeOfBinanceTest(
+    APIKey: string,
+    privateKey: string
+  ): Promise<string> {
+    try {
+      const res = await this.$axios.post('/tradeOfBinanceTest', {
+        APIKey: APIKey,
+        privateKey: privateKey,
+        symbol: 'BTCUSDT',
+        quantity: 1
+      });
+      if (res.data && res.data.code) {
+        if (res.data.code === 5000) {
+          return 'Please enable Spot & Margin Trading.';
+        } else {
+          const errMsg = res.data.msg;
+          if (errMsg.includes('API-key')) {
+            return res.data.msg;
+          } else {
+            return 'Invalid private key.';
+          }
+        }
+      } else {
+        return '';
+      }
+    } catch (e) {}
+    return '';
+  }
+  private async deleteAccount(item: Account): Promise<void> {
+    if (item.hasStrategy) {
+      return;
+    }
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
+      const that = this;
+      this.$confirm({
+        content: 'Are you sure you want to delete the account?',
+        class: 'connect-plug message-info',
+        centered: true,
+        okText: 'Confirm',
+        onOk() {
+          that.spinning = false;
+          that.$axios
+            .post('deleteAccount', {
+              accountId: item.id
+            })
+            .then((res) => {
+              if (res && res.status === 200) {
+                that.$message.success('Delete strategy success');
+                that.exchangesTable = [];
+                that.checkedExchangesTable = [];
+                that.initExchangesTable();
+              } else {
+                that.$message.error('Error');
+              }
+            })
+            .finally(() => {
+              that.spinning = false;
+            });
+        }
+      });
+    } catch (e) {
+      this.$message.error('Error');
+    }
+  }
 }
 </script>
 <style scoped lang="scss">
@@ -296,6 +446,14 @@ export default class extends Vue {
     width: 80px;
     &:first-child {
       margin-right: 10px;
+    }
+  }
+}
+.change-exchange {
+  ::v-deep &.ant-checkbox-wrapper-disabled {
+    span {
+      color: #adb3c4;
+      padding-left: 0;
     }
   }
 }

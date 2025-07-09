@@ -1,0 +1,10 @@
+import { Identity } from '@dfinity/agent';
+import { Principal } from '@dfinity/principal';
+declare const SerializableIC: (x: any) => any;
+declare const fromSubAccountId: (subAccountId: number) => Array<number>;
+declare const toHexString: (bytes: Uint8Array) => string;
+declare const hexToBytes: (hex: string) => number[];
+declare const identityFromPem: (rawPrivateKey: string) => Identity | null;
+declare const asciiStringToByteArray: (text: string) => Array<number>;
+declare const principalToAccount: (principal: Principal, subAccount?: Uint8Array | undefined) => Array<number>;
+export { SerializableIC, fromSubAccountId, toHexString, hexToBytes, identityFromPem, asciiStringToByteArray, principalToAccount };

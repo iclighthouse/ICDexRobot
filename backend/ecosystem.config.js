@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: 'robot',
-      script: 'src/app.ts',
-      interpreter: 'ts-node',
+      script: 'dist/app.js',
+      interpreter: 'node',
       instances: 1,
       autorestart: true,
       watch: false,

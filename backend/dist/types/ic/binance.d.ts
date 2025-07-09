@@ -1,0 +1,12 @@
+import { AccountInfo, AvgPriceInfo, BinancePrice, Depth, ErrorData, ExchangeInfo, OrderInfo, OrderTypes, Side, TimeInForce, TradeResponseFULL } from './model';
+export declare const getAccountInfo: (accountId: number) => Promise<AccountInfo | ErrorData | null>;
+export declare const tradeOfBinance: (APIKey: string, privateKey: string, symbol: string, side: Side, type: OrderTypes, quantity?: number | undefined, timeInForce?: TimeInForce, price?: number | undefined, quoteOrderQty?: number | undefined) => Promise<TradeResponseFULL | ErrorData>;
+export declare const tradeOfBinanceTest: (symbol: string, quantity: number, APIKey: string, privateKey: string) => Promise<{} | ErrorData>;
+export declare const getExchangeInfo: (symbol: string) => Promise<ExchangeInfo | ErrorData>;
+export declare const getAvgPrice: (symbol: string) => Promise<AvgPriceInfo | ErrorData>;
+export declare const getTickerPrice: (symbol: string) => Promise<BinancePrice | ErrorData>;
+export declare const getDepth: (symbol: string) => Promise<Depth | ErrorData>;
+export declare const openOrders: (APIKey: string, privateKey: string, symbol: string) => Promise<Array<OrderInfo> | ErrorData>;
+export declare const getOrderInfo: (APIKey: string, privateKey: string, symbol: string, orderId: number) => Promise<OrderInfo | ErrorData>;
+export declare const cancelOrder: (APIKey: string, privateKey: string, symbol: string, orderId: number) => Promise<OrderInfo | ErrorData>;
+export declare const testConnectivity: () => Promise<boolean>;

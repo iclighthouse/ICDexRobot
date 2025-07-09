@@ -472,6 +472,11 @@
                   Errors({{ item.errors }})
                 </span>
               </div>
+              <div v-if="robotTypeName[item.typeId] === 'Maker Robot'">
+                <span class="link pointer" @click="showLots(item)"
+                  >Odd Lots</span
+                >
+              </div>
             </td>
             <td class="operation-td">
               <div class="operation">
@@ -2378,6 +2383,52 @@
         </div>
       </a-spin>
     </a-modal>
+    <a-modal
+      v-model="visibleLots"
+      centered
+      width="1000px"
+      :footer="null"
+      :keyboard="false"
+      :maskClosable="false"
+      :after-close="afterCloseLots"
+    >
+      <a-spin
+        :spinning="spinningLots"
+        class="exchange-main"
+        style="margin-top: 40px"
+      >
+        <table v-if="viewLots">
+          <thead>
+            <tr>
+              <th>Exchange</th>
+              <th>
+                {{
+                  robotPairInfo[viewLots.mainExchangePair]
+                    | filterSymbol(exchange[viewLots.mainExchangeId], true)
+                }}
+              </th>
+              <th>
+                {{
+                  robotPairInfo[viewLots.mainExchangePair]
+                    | filterSymbol(exchange[viewLots.mainExchangeId], false)
+                }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{{ exchange[viewLots.mainExchangeId] }}</td>
+              <td>
+                {{ oddLots.token0 }}
+              </td>
+              <td>
+                {{ oddLots.token1 }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </a-spin>
+    </a-modal>
     <withdraw-token
       v-if="currentPair"
       ref="withdrawToken"
@@ -2413,6 +2464,7 @@ import {
   ExchangeName,
   FilledBalance,
   MakerConfig,
+  OddLot,
   OrderRow,
   OrdersTable,
   PairPrice,
@@ -2643,6 +2695,8 @@ export default class extends Mixins(ICDexOrderMixin) {
   private spinningExchange = false;
   private spinningOrders = false;
   private spinningOrdersError = false;
+  private spinningLots = false;
+  private oddLots: OddLot = null;
   private robots: Array<Robot> = [];
   private robotError: Robot = null;
   private robotPairInfo: { [key: string]: RobotICDexInfo | BinanceSymbol } = {};
@@ -2667,6 +2721,8 @@ export default class extends Mixins(ICDexOrderMixin) {
   private robotType: Array<RobotType> = [];
   private robotTypeName: { [key: number]: RobotName } = {};
   private visible = false;
+  private visibleLots = false;
+  private viewLots: Robot = null;
   private visibleErrors = false;
   private title = 'Add Robot';
   private visibleView = false;
@@ -3617,6 +3673,31 @@ export default class extends Mixins(ICDexOrderMixin) {
     this.visible = false;
     this.spinningConfig = false;
   }
+  private showLots(item: Robot): void {
+    this.viewLots = item;
+    this.visibleLots = true;
+    this.oddLots = {
+      token0: '0',
+      token1: '0'
+    };
+    this.getOddLots(item);
+  }
+  private async getOddLots(item: Robot): Promise<void> {
+    this.spinningLots = true;
+    try {
+      const res = await this.$axios.get('getBalanceChanges', {
+        params: { strategyId: item.id }
+      });
+      if (res && res.status === 200) {
+        this.oddLots = res.data;
+      } else {
+        this.$message.error('Error');
+      }
+    } catch (e) {
+      this.$message.error('Error');
+    }
+    this.spinningLots = false;
+  }
   private showView(item: Robot): void {
     this.viewRobot = item;
     this.visibleView = true;
@@ -3688,9 +3769,11 @@ export default class extends Mixins(ICDexOrderMixin) {
         }
         this.$message.success('Run strategy success');
       } else {
+        console.error(res);
         this.$message.error('Error');
       }
     } catch (e) {
+      console.error(e);
       this.$message.error('Error');
     }
     this.spinningExchange = false;
@@ -3751,8 +3834,7 @@ export default class extends Mixins(ICDexOrderMixin) {
     this.eventSourceTrade.onmessage = (event) => {
       this.getOrders();
     };
-    this.eventSourceTrade.onopen = () => {
-    };
+    this.eventSourceTrade.onopen = () => {};
     this.eventSourceTrade.onerror = (error) => {
       this.eventSourceTrade.close();
       setTimeout(() => this.initSSETrade(), 1000);
@@ -4179,6 +4261,7 @@ export default class extends Mixins(ICDexOrderMixin) {
         });
         await Promise.all(promiseValue);
         this.orders = orders;
+        console.log(this.orders);
       }
     } catch (e) {
       //
@@ -4581,7 +4664,7 @@ export default class extends Mixins(ICDexOrderMixin) {
       );
       this.$nextTick(() => {
         (this.$refs as any).transferToken.transferForm.to =
-          this.robotPairInfo.pairId + '.' + currentAddress;
+          this.currentPair.pairId + '.' + currentAddress;
         (this.$refs as any).transferToken.init(this.currentToken);
       });
     }
@@ -4886,6 +4969,9 @@ export default class extends Mixins(ICDexOrderMixin) {
     } catch (e) {
       //
     }
+  }
+  private afterCloseLots(): void {
+    //
   }
   private afterCloseError(): void {
     this.robotError = null;

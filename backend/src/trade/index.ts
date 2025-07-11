@@ -14,6 +14,7 @@ import {
   insertOrderIdOrUpdate,
   insertOrUpdateBinanceOrderInfo,
   insertOrUpdateICDexOrderInfo,
+  updateAccountStatus,
   updateBalanceChanges,
   updateOrderIdMaker,
   updateStrategyStatus
@@ -69,7 +70,8 @@ import {
   getAccountInfo,
   getDepth,
   getOrderInfo,
-  openOrders
+  openOrders,
+  tradeOfBinanceTest
 } from '../ic/binance';
 import { clearTimeout, setTimeout } from 'timers';
 import {
@@ -146,9 +148,63 @@ export const runStrategy = async (
         } Account Unavailable.`;
       }
       if (secondExchangeAccount.status === AccountStatus.Unavailable) {
-        return `${exchange[strategy.mainExchangeId]} ${
+        return `${exchange[strategy.secondExchangeId]} ${
           secondExchangeAccount.name
         } Account Unavailable.`;
+      }
+      if (exchange[strategy.mainExchangeId] === ExchangeName.Binance) {
+        const mainAccount = getAccountValue(
+          strategy.mainExchangeAccountId,
+          exchange[strategy.mainExchangeId],
+          mainExchangeAccount.value
+        ) as BinanceConfig;
+        const res = await tradeOfBinanceTest(
+          'BTCUSDT',
+          1,
+          mainAccount.APIKey,
+          mainAccount.privateKey
+        );
+        if (res && (res as ErrorData).code) {
+          if (
+            (res as ErrorData).code === -2014 ||
+            (res as ErrorData).code === -2015
+          ) {
+            updateAccountStatus(
+              strategy.secondExchangeAccountId,
+              AccountStatus.Unavailable
+            ).then(() => {
+              //
+            });
+          }
+          return (res as ErrorData).msg;
+        }
+      }
+      if (exchange[strategy.secondExchangeId] === ExchangeName.Binance) {
+        const secondAccount = getAccountValue(
+          strategy.secondExchangeAccountId,
+          exchange[strategy.secondExchangeId],
+          secondExchangeAccount.value
+        ) as BinanceConfig;
+        const res = await tradeOfBinanceTest(
+          'BTCUSDT',
+          1,
+          secondAccount.APIKey,
+          secondAccount.privateKey
+        );
+        if (res && (res as ErrorData).code) {
+          if (
+            (res as ErrorData).code === -2014 ||
+            (res as ErrorData).code === -2015
+          ) {
+            updateAccountStatus(
+              strategy.secondExchangeAccountId,
+              AccountStatus.Unavailable
+            ).then(() => {
+              //
+            });
+          }
+          return (res as ErrorData).msg;
+        }
       }
       const updateTime = new Date().getTime();
       const res = await toRun(
@@ -226,10 +282,12 @@ export const toRun = async (
     secondPairInfo
   ) {
     const mainAccount = getAccountValue(
+      strategy.mainExchangeAccountId,
       exchange[strategy.mainExchangeId],
       mainExchangeAccount.value
     );
     const secondAccount = getAccountValue(
+      strategy.secondExchangeAccountId,
       exchange[strategy.secondExchangeId],
       secondExchangeAccount.value
     );
@@ -1221,6 +1279,7 @@ export const cancelAll = async (): Promise<void> => {
         );
         if (account) {
           const mainAccount = getAccountValue(
+            account.id,
             exchange[strategyInfo[pending.strategyId].mainExchangeId],
             account.value
           );
@@ -3160,6 +3219,7 @@ export const getBalance = async (
   return balance;
 };
 export const getAccountValue = (
+  accountId: number,
   exchangeName: ExchangeName,
   value: string
 ): Identity | BinanceConfig | null => {
@@ -3170,6 +3230,10 @@ export const getAccountValue = (
       const identity = identityFromPem(mainAccountValue.pem);
       if (identity) {
         account = identity;
+      } else {
+        updateAccountStatus(accountId, AccountStatus.Unavailable).then(() => {
+          //
+        });
       }
     }
   } else if (exchangeName === ExchangeName.Binance) {

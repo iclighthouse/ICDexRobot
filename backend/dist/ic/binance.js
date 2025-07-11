@@ -14,7 +14,7 @@ const getAccountInfo = async (accountId) => {
     try {
         const accountInfo = await db_1.getAccount(accountId);
         if (accountInfo) {
-            const mainAccount = trade_1.getAccountValue(model_1.ExchangeName.Binance, accountInfo.value);
+            const mainAccount = trade_1.getAccountValue(accountId, model_1.ExchangeName.Binance, accountInfo.value);
             if (mainAccount) {
                 const account = mainAccount;
                 const { APIKey, privateKey } = account;
@@ -80,7 +80,16 @@ const tradeOfBinanceTest = async (symbol, quantity, APIKey, privateKey) => {
         const sign = crypto_1.default.createSign('RSA-SHA256');
         sign.update(data);
         sign.end();
-        const signature = sign.sign(privateKey, 'base64');
+        let signature;
+        try {
+            signature = sign.sign(privateKey, 'base64');
+        }
+        catch (e) {
+            return {
+                code: -2014,
+                msg: 'Invalid Binance Account'
+            };
+        }
         const response = await axiosApi_1.default.post(`/api/v3/order/test?${data}&signature=${encodeURIComponent(signature)}`, null, {
             headers: {
                 'x-mbx-apikey': APIKey

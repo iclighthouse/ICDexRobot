@@ -598,7 +598,7 @@ const updateStrategyStatus = async (id, status, updateTime) => {
             if (strategy && exchange) {
                 const mainExchangeAccount = await exports.getAccount(strategy.mainExchangeAccountId);
                 if (mainExchangeAccount) {
-                    const mainAccount = trade_1.getAccountValue(exchange[strategy.mainExchangeId], mainExchangeAccount.value);
+                    const mainAccount = trade_1.getAccountValue(strategy.mainExchangeAccountId, exchange[strategy.mainExchangeId], mainExchangeAccount.value);
                     if (mainAccount) {
                         await trade_1.cancelPending(id, exchange[strategy.mainExchangeId], strategy.mainExchangePair, mainAccount);
                     }

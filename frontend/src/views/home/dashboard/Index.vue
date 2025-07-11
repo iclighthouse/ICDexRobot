@@ -3774,7 +3774,11 @@ export default class extends Mixins(ICDexOrderMixin) {
       }
     } catch (e) {
       console.error(e);
-      this.$message.error('Error');
+      if (e && e.response && e.response.data) {
+        this.$message.error(e.response.data);
+			} else {
+        this.$message.error('Error');
+			}
     }
     this.spinningExchange = false;
   }

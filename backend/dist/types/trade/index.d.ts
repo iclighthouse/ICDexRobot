@@ -58,7 +58,7 @@ export declare const toRunTimer: (strategy: Strategy, exchange: {
     [key: number]: ExchangeName;
 }, mainPairInfo: ICDexPairInfoDB | BinanceSymbolDB, mainAccount: Identity | BinanceConfig, mainAccountBalance: Balance, secondPairInfo: ICDexPairInfoDB | BinanceSymbolDB, secondAccount: Identity | BinanceConfig, secondAccountBalance: Balance, secondPairInfoTwo: ICDexPairInfoDB | BinanceSymbolDB | null, secondAccountBalanceTwo: Balance | null) => Promise<string>;
 export declare const getBalance: (accountId: number, exchangeName: ExchangeName, pairInfo: ICDexPairInfoDB | BinanceSymbolDB, accountValue: Identity | BinanceConfig) => Promise<Balance>;
-export declare const getAccountValue: (exchangeName: ExchangeName, value: string) => Identity | BinanceConfig | null;
+export declare const getAccountValue: (accountId: number, exchangeName: ExchangeName, value: string) => Identity | BinanceConfig | null;
 export declare const getBinanceAccountInfo: (accountId: number) => Promise<AccountInfo | null>;
 export declare const filterBinanceBalance: (accountInfo: AccountInfo, symbol: string) => string;
 export declare const getBinanceAccountInfoInterval: (accountId: number, val: BinanceConfig) => Promise<void>;

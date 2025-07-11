@@ -14,9 +14,9 @@ import {
 import { AxiosRequestConfig } from 'axios';
 import crypto from 'crypto';
 import instance from './axiosApi';
-import { getAccount } from '../db';
+import { getAccount, updateAccountStatus } from '../db';
 import { getAccountValue } from '../trade';
-import { ExchangeName } from '../model';
+import { AccountStatus, ExchangeName } from '../model';
 import { BinanceConfig } from '../trade/model';
 // const APIKey = 'Z3eEtEM1lprYr0I3io13fLW9bl8ixC1uXSPDdQ2bixAIcNnwjAbhlSr56rZjL4AT'; //testnet
 export const getAccountInfo = async (
@@ -26,6 +26,7 @@ export const getAccountInfo = async (
     const accountInfo = await getAccount(accountId);
     if (accountInfo) {
       const mainAccount = getAccountValue(
+        accountId,
         ExchangeName.Binance,
         accountInfo.value
       );
@@ -114,7 +115,15 @@ export const tradeOfBinanceTest = async (
     const sign = crypto.createSign('RSA-SHA256');
     sign.update(data);
     sign.end();
-    const signature = sign.sign(privateKey, 'base64');
+    let signature;
+    try {
+      signature = sign.sign(privateKey, 'base64');
+    } catch (e) {
+      return {
+        code: -2014,
+        msg: 'Invalid Binance Account'
+      };
+    }
     const response = await instance.post(
       `/api/v3/order/test?${data}&signature=${encodeURIComponent(signature)}`,
       null,

@@ -658,6 +658,7 @@ export const updateStrategyStatus = async (
         );
         if (mainExchangeAccount) {
           const mainAccount = getAccountValue(
+            strategy.mainExchangeAccountId,
             exchange[strategy.mainExchangeId],
             mainExchangeAccount.value
           );

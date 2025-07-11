@@ -50,7 +50,33 @@ const runStrategy = async (strategyId, init = true) => {
                 return `${exchange[strategy.mainExchangeId]} ${mainExchangeAccount.name} Account Unavailable.`;
             }
             if (secondExchangeAccount.status === model_1.AccountStatus.Unavailable) {
-                return `${exchange[strategy.mainExchangeId]} ${secondExchangeAccount.name} Account Unavailable.`;
+                return `${exchange[strategy.secondExchangeId]} ${secondExchangeAccount.name} Account Unavailable.`;
+            }
+            if (exchange[strategy.mainExchangeId] === model_1.ExchangeName.Binance) {
+                const mainAccount = exports.getAccountValue(strategy.mainExchangeAccountId, exchange[strategy.mainExchangeId], mainExchangeAccount.value);
+                const res = await binance_1.tradeOfBinanceTest('BTCUSDT', 1, mainAccount.APIKey, mainAccount.privateKey);
+                if (res && res.code) {
+                    if (res.code === -2014 ||
+                        res.code === -2015) {
+                        db_1.updateAccountStatus(strategy.secondExchangeAccountId, model_1.AccountStatus.Unavailable).then(() => {
+                            //
+                        });
+                    }
+                    return res.msg;
+                }
+            }
+            if (exchange[strategy.secondExchangeId] === model_1.ExchangeName.Binance) {
+                const secondAccount = exports.getAccountValue(strategy.secondExchangeAccountId, exchange[strategy.secondExchangeId], secondExchangeAccount.value);
+                const res = await binance_1.tradeOfBinanceTest('BTCUSDT', 1, secondAccount.APIKey, secondAccount.privateKey);
+                if (res && res.code) {
+                    if (res.code === -2014 ||
+                        res.code === -2015) {
+                        db_1.updateAccountStatus(strategy.secondExchangeAccountId, model_1.AccountStatus.Unavailable).then(() => {
+                            //
+                        });
+                    }
+                    return res.msg;
+                }
             }
             const updateTime = new Date().getTime();
             const res = await exports.toRun(strategy, exchange, robotType, mainExchangeAccount, secondExchangeAccount);
@@ -103,8 +129,8 @@ const toRun = async (strategy, exchange, robotType, mainExchangeAccount, secondE
         secondExchangeAccount &&
         mainPairInfo &&
         secondPairInfo) {
-        const mainAccount = exports.getAccountValue(exchange[strategy.mainExchangeId], mainExchangeAccount.value);
-        const secondAccount = exports.getAccountValue(exchange[strategy.secondExchangeId], secondExchangeAccount.value);
+        const mainAccount = exports.getAccountValue(strategy.mainExchangeAccountId, exchange[strategy.mainExchangeId], mainExchangeAccount.value);
+        const secondAccount = exports.getAccountValue(strategy.secondExchangeAccountId, exchange[strategy.secondExchangeId], secondExchangeAccount.value);
         if (mainAccount && secondAccount) {
             const mainAccountBalance = await exports.getBalance(strategy.mainExchangeAccountId, exchange[strategy.mainExchangeId], mainPairInfo, mainAccount);
             const secondAccountBalance = await exports.getBalance(strategy.secondExchangeAccountId, exchange[strategy.secondExchangeId], secondPairInfo, secondAccount);
@@ -556,7 +582,7 @@ const cancelAll = async () => {
             if (!accountInfo[strategyInfo[pending.strategyId].mainExchangeAccountId]) {
                 const account = await db_1.getAccount(strategyInfo[pending.strategyId].mainExchangeAccountId);
                 if (account) {
-                    const mainAccount = exports.getAccountValue(exchange[strategyInfo[pending.strategyId].mainExchangeId], account.value);
+                    const mainAccount = exports.getAccountValue(account.id, exchange[strategyInfo[pending.strategyId].mainExchangeId], account.value);
                     if (mainAccount) {
                         accountInfo[strategyInfo[pending.strategyId].mainExchangeAccountId] = mainAccount;
                     }
@@ -1512,7 +1538,7 @@ const getBalance = async (accountId, exchangeName, pairInfo, accountValue) => {
     return balance;
 };
 exports.getBalance = getBalance;
-const getAccountValue = (exchangeName, value) => {
+const getAccountValue = (accountId, exchangeName, value) => {
     let account = null;
     if (exchangeName === model_1.ExchangeName.ICDex) {
         const mainAccountValue = JSON.parse(value);
@@ -1520,6 +1546,11 @@ const getAccountValue = (exchangeName, value) => {
             const identity = converter_1.identityFromPem(mainAccountValue.pem);
             if (identity) {
                 account = identity;
+            }
+            else {
+                db_1.updateAccountStatus(accountId, model_1.AccountStatus.Unavailable).then(() => {
+                    //
+                });
             }
         }
     }
